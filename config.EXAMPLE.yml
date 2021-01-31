@@ -1,0 +1,27 @@
+#
+# This file is an example for game configuration
+#
+
+# SERVER
+# data to allow the server to send emails to the players when a turn is finished
+server:
+    email : "server@example.com"
+    stmp :
+        url : "example.com"
+        port: "587"
+        password: "abcdef"
+
+
+# PLAYERS
+# the list of players, their ingame-names and email
+players:
+    # player 1
+    -
+        name : "GLaDOS"
+        email: "glados@example.com"
+
+    # player 2
+    -
+        name : "HAL9000"
+        email: "hal9000@example.com"
+
