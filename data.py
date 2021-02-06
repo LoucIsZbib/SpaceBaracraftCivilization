@@ -10,6 +10,13 @@ def use_db(path_to_db: str = "game", testing: bool = False):
     else:
         db.init(f"{path_to_db}")
 
+class Player(p.Model):
+    name = p.CharField(unique=True)
+    email = p.CharField()
+
+    class Meta:
+        database = db  # This model uses the 'game.db' database
+
 class Case(p.Model):
     x = p.IntegerField()
     y = p.IntegerField()
@@ -33,6 +40,7 @@ class Planet(p.Model):
     numero = p.IntegerField()
     climat = p.FloatField()
     temperature = p.FloatField()
+    size = p.IntegerField()
     atmosphere = p.FloatField()
 
     class Meta:
@@ -42,5 +50,5 @@ class Planet(p.Model):
         )
 
 def create_tables():
-    db.create_tables([Case, Star, Planet])
+    db.create_tables([Player, Case, Star, Planet])
 

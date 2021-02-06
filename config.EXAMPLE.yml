@@ -1,6 +1,11 @@
 #
 # This file is an example for game configuration
 #
+#   for each player :
+#       - get a unique name
+#       - get email address
+#       - share 20 points between BIO and MECA tech
+#
 
 # SERVER
 # data to allow the server to send emails to the players when a turn is finished
@@ -19,9 +24,20 @@ players:
     -
         name : "GLaDOS"
         email: "glados@example.com"
+        BIO :  5
+        MECA : 15
 
     # player 2
     -
         name : "HAL9000"
         email: "hal9000@example.com"
+        BIO :  15
+        MECA : 5
+
+    # player 3
+    -
+        name : "Discovery"
+        email: "discovery@example.com"
+        BIO :  8
+        MECA : 12
 
