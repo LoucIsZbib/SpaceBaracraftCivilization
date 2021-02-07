@@ -24,20 +24,20 @@ players:
     -
         name : "GLaDOS"
         email: "glados@example.com"
-        BIO :  5
-        MECA : 15
+        bio :  5
+        meca : 15
 
     # player 2
     -
         name : "HAL9000"
         email: "hal9000@example.com"
-        BIO :  15
-        MECA : 5
+        bio :  15
+        meca : 5
 
     # player 3
     -
         name : "Discovery"
         email: "discovery@example.com"
-        BIO :  8
-        MECA : 12
+        bio :  8
+        meca : 12
 

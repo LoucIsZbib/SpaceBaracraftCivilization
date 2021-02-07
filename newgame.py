@@ -3,6 +3,8 @@ import random
 import numpy as np
 import logging
 
+from typing import List
+
 import data
 from names import generate_name
 
@@ -19,7 +21,7 @@ MECA_START_TEMP = -50           # start temperature for mecanichal player
 MECA_START_HR = 10              # start HR for mechanical player
 START_PLANET_SIZE = 3000        # size of initial planet, same for all players
 PLAYER_START_POINTS = 20        # number of points to share between BIO and MECA for new player
-
+COLONY_START_POP = 100          # size of population on first colony
 
 
 # logging
@@ -27,6 +29,7 @@ logger = logging.getLogger("sbc")
 
 
 def newgame(game_name: str, tmp_folder: str, config):
+    """ script to create the game objects """
     logger.info("-- Creation of a new game --")
 
     # Database selection
@@ -36,33 +39,29 @@ def newgame(game_name: str, tmp_folder: str, config):
     data.create_tables()
 
     # Creates players
-    logger.debug(f"   creating Players")
-    players_name_email = [{"name": player["name"], "email": player["email"]} for player in config["players"]]
-    data.Player.insert_many(players_name_email).execute()
-    # useless : unique constraint is violated, previous instruction raised exception and interrupt the program
-    # if len(data.Player.select()) != len(config["players"]):
-    #     logger.error(f"number of inserted players ({len(data.Player.select())}) is different from config ({len(config['players'])})")
-    #     raise Exception(f"NEWGAME : number of inserted players ({len(data.Player.select())}) is different from config ({len(config['players'])})")
-    players = data.Player.select()
+    players = create_player(config)
 
-    # Create galaxy
+    # Create galaxyplayer.tech.bio
     galaxy_radius = create_galaxy(len(players))
     # print(galaxy_status())
 
-    # Assign homes
-    # Creating new star with new planets with custom properties adjusted to player
-    for config_player in config["players"]:
-        player = data.Player.get(data.Player.name == config_player["name"])
+    # Make homes (with new star and custom planets)
+    make_homes(players, galaxy_radius)
 
+def make_homes(players, galaxy_radius):
+    """ Creating new star with new planets with custom properties adjusted to player
+        Also create a first colony
+     """
+    for player in players:
         # generate new star
         has_been_created = False
         while not has_been_created:
             x, y, z = generate_star(galaxy_radius)
             case, has_been_created = data.Case.get_or_create(x=x, y=y, z=z)
             if case.star:
-                logger.debug(f"case has star {x} {y} {z}, reroll")
+                logger.debug(f"case {x} {y} {z} has star, reroll")
             else:
-                logger.debug(f"case doesn't have a star {x} {y} {z}, creating one for home planet")
+                logger.debug(f"case {x} {y} {z} doesn't have a star, creating one for home planet")
                 star = data.Star.create(case=case, name=generate_name())
 
         # create custom planets for equal start condition
@@ -71,15 +70,43 @@ def newgame(game_name: str, tmp_folder: str, config):
         planets = []
         for i in range(1, 5):
             if i == home_planet_nb:
-                generate_custom_planet(config_player["BIO"], config_player["MECA"], START_PLANET_SIZE)
+                climat, temperature, atmosphere, size = generate_custom_planet(player.tech.bio, player.tech.meca, START_PLANET_SIZE)
             elif i == second_planet:
-                pass
+                climat, temperature, atmosphere, size = generate_custom_planet(player.tech.meca, player.tech.bio, int(START_PLANET_SIZE * 1.5))
             else:
-                pass
+                climat, temperature, atmosphere, size = generate_planet(i)
+            planets.append({"star": star, "numero": i, "climat": climat, "temperature": temperature, "size": size, "atmosphere": atmosphere})
+        data.Planet.insert_many(planets).execute()
 
         # make home colony
+        # adjust pop size between bio and meca
+        working_force = int(COLONY_START_POP * player.tech.bio / PLAYER_START_POINTS)
+        robots = int(COLONY_START_POP * player.tech.meca / PLAYER_START_POINTS)
+        planet = data.Planet.get(star=star, numero=home_planet_nb)
+        data.Colony.create(planet=planet, owner=player, WF=working_force, RO=robots)
 
+def create_player(config):
+    logger.debug(f"   creating Players")
+    players_name_email = [{"name": player["name"], "email": player["email"]} for player in config["players"]]
+    data.Player.insert_many(players_name_email).execute()
+    # useless : if unique constraint is violated, previous instruction raised exception and interrupt the program
+    # if len(data.Player.select()) != len(config["players"]):
+    #     logger.error(f"number of inserted players ({len(data.Player.select())}) is different from config ({len(config['players'])})")
+    #     raise Exception(f"NEWGAME : number of inserted players ({len(data.Player.select())}) is different from config ({len(config['players'])})")
+    players = data.Player.select()
 
+    # Initialize tech levels
+    tech = []
+    for player in config["players"]:
+        bio = player["bio"]
+        meca = player["meca"]
+        if bio + meca != PLAYER_START_POINTS:
+            raise ValueError(
+                f"player BIO and MECA levels are incorrects : BIO({bio}) + MECA({meca}) != start_points({PLAYER_START_POINTS})")
+        tech.append({"player": data.Player.get(data.Player.name == player["name"]), "bio": bio, "meca": meca})
+    data.Tech.insert_many(tech).execute()
+
+    return players
 
 def create_galaxy(nb_of_player: int,
                   player_density: int = STAR_DENSITY_PER_PLAYER,
@@ -168,7 +195,7 @@ def generate_star(galaxy_radius: int):
     return x, y, z
 
 def generate_planet(numero):
-    # planet raw characteristics
+    """ Create a random planet """
     # solid = random.choice([True, False])  # for later implementation
     solid = True
     climat = custom_asymetrical_rnd(0, 50, 100, cohesion=0.5)
@@ -179,19 +206,16 @@ def generate_planet(numero):
 
     return climat, temperature, atmosphere, size
 
-def generate_custom_planet(bio: int, meca: int, size: int):
-    if bio + meca != PLAYER_START_POINTS:
-        raise ValueError(f"player BIO and MECA levels are incorrects : BIO({bio}) + MECA({meca}) != start_points({PLAYER_START_POINTS})")
+def generate_custom_planet(bio: int, meca: int, planet_size: int = START_PLANET_SIZE):
+    """ Create a custom planet to fit player characteristics """
     solid = True
     climat = MECA_START_HR + bio * (BIO_START_HR - MECA_START_HR) / PLAYER_START_POINTS
     temperature = MECA_START_TEMP + bio * (BIO_START_TEMP - MECA_START_TEMP) / PLAYER_START_POINTS
     atmosphere = custom_asymetrical_rnd(0, 1, 90, cohesion=3)
-    size = START_PLANET_SIZE
+    size = planet_size
     logger.debug(f"   custom planet :   climat= {climat:>6.2f}   temperature={temperature:>7.1f}   size={size:>4}   atmosphere={atmosphere:>7.3f}")
 
     return climat, temperature, atmosphere, size
-
-
 
 def custom_asymetrical_rnd(left: float, mode: float, right: float, cohesion: float = 2):
     """
@@ -204,7 +228,6 @@ def custom_asymetrical_rnd(left: float, mode: float, right: float, cohesion: flo
     number = np.random.default_rng().beta(cohesion, cohesion)  # alpha = beta = 2 : rather centred on mode , if = 0.5, rather on extrem
     number = (number/0.5*(mode-left) + left) if number < 0.5 else ((number-0.5)/(1-0.5)*(right-mode) + mode)
     return number
-
 
 def galaxy_status():
     msg = ""

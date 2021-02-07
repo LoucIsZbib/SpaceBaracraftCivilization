@@ -14,6 +14,21 @@ class Player(p.Model):
     name = p.CharField(unique=True)
     email = p.CharField()
 
+    @property
+    def tech(self):
+        return self.techs.get()
+
+    class Meta:
+        database = db  # This model uses the 'game.db' database
+
+class Tech(p.Model):
+    player = p.ForeignKeyField(Player, backref="techs", unique=True)
+    bio = p.IntegerField()
+    meca = p.IntegerField()
+
+    bio_points = p.IntegerField(default=0)
+    meca_points = p.IntegerField(default=0)
+
     class Meta:
         database = db  # This model uses the 'game.db' database
 
@@ -49,6 +64,18 @@ class Planet(p.Model):
             (("star", "numero"), True),  # unique index sur star and numero
         )
 
+class Colony(p.Model):
+    planet = p.ForeignKeyField(Planet, backref="colony")
+    owner = p.ForeignKeyField(Player, backref="colonies")
+    WF = p.IntegerField(default=0)
+    RO = p.IntegerField(default=0)
+
+    class Meta:
+        database = db  # This model uses the 'game.db' database
+        indexes = (
+            (("planet", "owner"), True),  # unique index sur star and numero
+        )
+
 def create_tables():
-    db.create_tables([Player, Case, Star, Planet])
+    db.create_tables([Player, Tech, Case, Star, Planet, Colony])
 
