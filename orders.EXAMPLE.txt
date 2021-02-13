@@ -1,0 +1,26 @@
+# This is a command, works also within a line : everything on right is ignored
+# First line = name of the Player
+player Flibustiers
+
+# First part = PRODUCTION
+PRODUCTION PL Earth
+build 50 WF
+
+Production PL "Red Mars"
+REsearch 10 bio
+
+
+
+
+# Second part = MOVEMENTS
+MOVEMENTS
+jump FF firefly PL Venus
+
+Orbit DD "ISS barakuda" PL Earth
+
+# Last part = COMBAT
+COMBAT
+attack FF Firefly PL Venus
+
+
+

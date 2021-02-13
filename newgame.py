@@ -2,11 +2,13 @@ import math
 import random
 import numpy as np
 import logging
+import os
 
-from typing import List
+# from typing import List
 
 import data
 from names import generate_name
+from production import food_planet_factor, meca_planet_factor
 
 
 # STANDARD GAME SETTINGS
@@ -32,6 +34,9 @@ def newgame(game_name: str, tmp_folder: str, config):
     """ script to create the game objects """
     logger.info("-- Creation of a new game --")
 
+    # Creating folders
+    os.makedirs(tmp_folder + "orders", exist_ok=True)
+
     # Database selection
     db_name = tmp_folder + '+' + game_name + '.db'
     logger.debug(f"   using {db_name}")
@@ -47,11 +52,21 @@ def newgame(game_name: str, tmp_folder: str, config):
 
     # Make homes (with new star and custom planets)
     make_homes(players, galaxy_radius)
+    # DEBUG
+    # for player in players:
+    #     print(galaxy_status(player))
+
+    # send reports to players
+    pass
+
+    # init game turn counter
+    data.kv["game_turn"] = 0
 
 def make_homes(players, galaxy_radius):
     """ Creating new star with new planets with custom properties adjusted to player
         Also create a first colony
      """
+    logger.info("making homes")
     for player in players:
         # generate new star
         has_been_created = False
@@ -64,18 +79,20 @@ def make_homes(players, galaxy_radius):
                 logger.debug(f"case {x} {y} {z} doesn't have a star, creating one for home planet")
                 star = data.Star.create(case=case, name=generate_name())
 
+        logger.info(f"   creating new star ({star.name}) and 4 planets for player {player.name}")
+
         # create custom planets for equal start condition
         """start condition : 4 planets, 1 suitable, 1 almost suitable, 2 not suitable"""
         home_planet_nb, second_planet = random.sample(range(1, 5), 2)
         planets = []
         for i in range(1, 5):
             if i == home_planet_nb:
-                climat, temperature, atmosphere, size = generate_custom_planet(player.tech.bio, player.tech.meca, START_PLANET_SIZE)
+                humidity, temperature, atmosphere, size = generate_custom_planet(player.tech.bio, player.tech.meca, START_PLANET_SIZE)
             elif i == second_planet:
-                climat, temperature, atmosphere, size = generate_custom_planet(player.tech.meca, player.tech.bio, int(START_PLANET_SIZE * 1.5))
+                humidity, temperature, atmosphere, size = generate_custom_planet(player.tech.meca, player.tech.bio, int(START_PLANET_SIZE * 1.5))
             else:
-                climat, temperature, atmosphere, size = generate_planet(i)
-            planets.append({"star": star, "numero": i, "climat": climat, "temperature": temperature, "size": size, "atmosphere": atmosphere})
+                humidity, temperature, atmosphere, size = generate_planet(i)
+            planets.append({"star": star, "numero": i, "humidity": humidity, "temperature": temperature, "size": size, "atmosphere": atmosphere})
         data.Planet.insert_many(planets).execute()
 
         # make home colony
@@ -86,14 +103,16 @@ def make_homes(players, galaxy_radius):
         data.Colony.create(planet=planet, owner=player, WF=working_force, RO=robots)
 
 def create_player(config):
-    logger.debug(f"   creating Players")
     players_name_email = [{"name": player["name"], "email": player["email"]} for player in config["players"]]
+    logger.info(f"Creating {len(players_name_email)} Players")
     data.Player.insert_many(players_name_email).execute()
     # useless : if unique constraint is violated, previous instruction raised exception and interrupt the program
     # if len(data.Player.select()) != len(config["players"]):
     #     logger.error(f"number of inserted players ({len(data.Player.select())}) is different from config ({len(config['players'])})")
     #     raise Exception(f"NEWGAME : number of inserted players ({len(data.Player.select())}) is different from config ({len(config['players'])})")
     players = data.Player.select()
+    for player in players:
+        logger.debug(f"   player {player.name} added")
 
     # Initialize tech levels
     tech = []
@@ -121,7 +140,7 @@ def create_galaxy(nb_of_player: int,
 
     planets characteristics:
         type : gaz or solid
-        climat : arid (0) to humid (100), think %RH
+        humidity : arid (0) to humid (100), think %RH
         temperature : cold (-270) to warm (1000), think °C
         atmosphere : 0.001 to 90 atm (pressure relative to earth)
         size : integer, optimal size of population before serious decreasing due to overpopulation
@@ -173,8 +192,8 @@ def create_galaxy(nb_of_player: int,
         logger.debug(f"{star.name}  x: {star.case.x:>2} y: {star.case.y:>2} x: {star.case.z:>2}")
 
         for i in range(nb_of_planet):
-            climat, temperature, atmosphere, size = generate_planet(i+1)
-            planets.append({"star": star.get_id(), "numero": i+1, "climat": climat, "temperature": temperature, "size": size, "atmosphere": atmosphere})
+            humidity, temperature, atmosphere, size = generate_planet(i+1)
+            planets.append({"star": star.get_id(), "numero": i+1, "humidity": humidity, "temperature": temperature, "size": size, "atmosphere": atmosphere})
     data.Planet.insert_many(planets).execute()
     logger.info(f"   number of planets created : {len(data.Planet.select())}")
 
@@ -198,24 +217,24 @@ def generate_planet(numero):
     """ Create a random planet """
     # solid = random.choice([True, False])  # for later implementation
     solid = True
-    climat = custom_asymetrical_rnd(0, 50, 100, cohesion=0.5)
+    humidity = custom_asymetrical_rnd(0, 50, 100, cohesion=0.5)
     temperature = custom_asymetrical_rnd(-270, 20, 1000, cohesion=3)
     atmosphere = custom_asymetrical_rnd(0, 1, 90, cohesion=3)
     size = random.randrange(MIN_PLANET_SIZE, MAX_PLANET_SIZE, 10)
-    logger.debug(f"   planet_nb: {numero}   climat= {climat:>6.2f}   temperature={temperature:>7.1f}   size={size:>4}   atmosphere={atmosphere:>7.3f}")
+    logger.debug(f"   planet_nb: {numero}   humidity= {humidity:>6.2f}   temperature={temperature:>7.1f}   size={size:>4}   atmosphere={atmosphere:>7.3f}")
 
-    return climat, temperature, atmosphere, size
+    return humidity, temperature, atmosphere, size
 
 def generate_custom_planet(bio: int, meca: int, planet_size: int = START_PLANET_SIZE):
     """ Create a custom planet to fit player characteristics """
     solid = True
-    climat = MECA_START_HR + bio * (BIO_START_HR - MECA_START_HR) / PLAYER_START_POINTS
+    humidity = MECA_START_HR + bio * (BIO_START_HR - MECA_START_HR) / PLAYER_START_POINTS
     temperature = MECA_START_TEMP + bio * (BIO_START_TEMP - MECA_START_TEMP) / PLAYER_START_POINTS
     atmosphere = custom_asymetrical_rnd(0, 1, 90, cohesion=3)
     size = planet_size
-    logger.debug(f"   custom planet :   climat= {climat:>6.2f}   temperature={temperature:>7.1f}   size={size:>4}   atmosphere={atmosphere:>7.3f}")
+    logger.debug(f"   custom planet :   humidity= {humidity:>6.2f}   temperature={temperature:>7.1f}   size={size:>4}   atmosphere={atmosphere:>7.3f}")
 
-    return climat, temperature, atmosphere, size
+    return humidity, temperature, atmosphere, size
 
 def custom_asymetrical_rnd(left: float, mode: float, right: float, cohesion: float = 2):
     """
@@ -229,13 +248,13 @@ def custom_asymetrical_rnd(left: float, mode: float, right: float, cohesion: flo
     number = (number/0.5*(mode-left) + left) if number < 0.5 else ((number-0.5)/(1-0.5)*(right-mode) + mode)
     return number
 
-def galaxy_status():
-    msg = ""
+def galaxy_status(player: data.Player):
+    msg = f"Galaxy viewed from player {player.name}\n"
     stars = data.Star.select()
     msg += f"star number = {len(stars)}" + "\n"
     for star in stars:
         msg += f"{star.name:<10}  x: {star.case.x:>2} y: {star.case.y:>2} x: {star.case.z:>2}  nb_planets={len(star.planets)}" + "\n"
         planets = data.Planet.select().where(data.Planet.star == star)
         for planet in planets:
-            msg += f"   planet_nb: {planet.numero}  climat= {planet.climat:>6.2f}   temperature={planet.temperature:>7.1f}    atmosphere={planet.atmosphere:>7.3f}" + "\n"
+            msg += f"   planet_nb: {planet.numero}  humidity= {planet.humidity:>6.2f}   temperature={planet.temperature:>7.1f}    atmosphere={planet.atmosphere:>7.3f}    food_factor={food_planet_factor(planet, player):>3.3f}    meca_factor={meca_planet_factor(planet, player):>3.3f}" + "\n"
     return msg

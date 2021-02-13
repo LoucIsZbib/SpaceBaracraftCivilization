@@ -1,14 +1,20 @@
 import peewee as p
+from playhouse.kv import KeyValue
 
 from names import generate_name
 
 db = p.SqliteDatabase(None, autoconnect=True)
 
+kv = None
+
 def use_db(path_to_db: str = "game", testing: bool = False):
+    global kv
     if testing:
         db.init(':memory:')
     else:
         db.init(f"{path_to_db}")
+
+    kv = KeyValue(database=db, table_name="keyvalue")
 
 class Player(p.Model):
     name = p.CharField(unique=True)
@@ -53,7 +59,7 @@ class Star(p.Model):
 class Planet(p.Model):
     star = p.ForeignKeyField(Star, backref='planets')
     numero = p.IntegerField()
-    climat = p.FloatField()
+    humidity = p.FloatField()
     temperature = p.FloatField()
     size = p.IntegerField()
     atmosphere = p.FloatField()

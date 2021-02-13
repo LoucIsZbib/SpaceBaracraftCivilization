@@ -55,7 +55,7 @@ if __name__ == "__main__":
         # FOLDER TO STORE GAME DATA
         if args.tmp:
             # create it recursively and ignore if already exists
-            args.tmp = args.tmp
+            args.tmp = args.tmp + '/'
             os.makedirs(args.tmp, exist_ok=True)
         else:
             # Create a temporary folder
@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
         # CONFIG FILE
         with open("config.EXAMPLE.yml", "r") as f:
-            config = yaml.load(f)
+            config = yaml.safe_load(f)
 
         newgame.newgame(args.game_name, args.tmp, config)
 
