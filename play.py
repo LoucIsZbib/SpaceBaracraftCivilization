@@ -2,6 +2,9 @@ import logging
 import os
 
 from orders import Orders
+from data import Player
+from production import production_phase
+from movements import movement_phase
 
 # logging
 logger = logging.getLogger("sbc")
@@ -27,7 +30,16 @@ def play_one_turn(game_name: str, tmp_folder: str):
     orders = [Orders(file) for file in orders_files]
 
     # executing orders, game stage by game stage
-    pass
+    # production phase - all players one after the other
+    for order in orders:
+        production_phase(order)
+
+    # movement phase - all players one after the other
+    for order in orders:
+        movement_phase(order)
+
+    # Combat phase - everyone together
+    # TODO : implement combat system
 
     # send reports
     pass

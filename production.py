@@ -22,14 +22,16 @@ Test results with numba :
     MATH timeit avec numba = 0.0003 ms
 
 """
-
-from data import Planet, Player
 # from scipy.stats import norm
 # from timeit import timeit
 # from time import time
 # from numba import jit, njit
 # import numpy as np
 import math
+from typing import List
+
+from data import Planet, Player
+
 import logging
 
 # logging
@@ -64,4 +66,17 @@ def gauss(x: float, moy: float, std: float):
 def gauss_factor(x: float, moy: float, std: float):
     return gauss(x, moy, std) / gauss(moy, moy, std)
 
+def production_phase(orders):
+    """
+    handle production phase for a player
+    1- ressources gathering
+    2- maintenance costs
+    3- ordres execution
+    """
+
+def build(player: Player, arguments: List[str]):
+    print("building something :)  method has to be written first")
+
+def research(player: Player, arguments: List[str]):
+    print("researching new tech !  method has to be written first :)")
 
