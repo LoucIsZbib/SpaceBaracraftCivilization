@@ -30,7 +30,7 @@ Test results with numba :
 import math
 from typing import List
 
-from data import Planet, Player
+from server.data import Planet, Player
 
 import logging
 

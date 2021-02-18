@@ -1,10 +1,9 @@
 import logging
 import os
 
-from orders import Orders
-from data import Player
-from production import production_phase
-from movements import movement_phase
+from server.orders import Orders
+from server.production import production_phase
+from server.movements import movement_phase
 
 # logging
 logger = logging.getLogger("sbc")

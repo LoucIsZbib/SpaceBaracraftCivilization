@@ -1,7 +1,7 @@
 import peewee as p
 from playhouse.kv import KeyValue
 
-from names import generate_name
+from server.names import generate_name
 
 db = p.SqliteDatabase(None, autoconnect=True)
 
@@ -64,6 +64,13 @@ class Planet(p.Model):
     size = p.IntegerField()
     atmosphere = p.FloatField()
 
+    def to_dict(self):
+        return {
+            "numero": self.numero,
+            "humidity": self.humidity,
+            "temperature": self.temperature,
+        }
+
     class Meta:
         database = db  # This model uses the 'game.db' database
         indexes = (
@@ -73,8 +80,16 @@ class Planet(p.Model):
 class Colony(p.Model):
     planet = p.ForeignKeyField(Planet, backref="colony")
     owner = p.ForeignKeyField(Player, backref="colonies")
+    name = p.CharField(default=generate_name())
     WF = p.IntegerField(default=0)
     RO = p.IntegerField(default=0)
+
+    def to_dict(self):
+        return {
+            "colony_name": self.name,
+            "WF": self.WF,
+            "RO": self.RO
+        }
 
     class Meta:
         database = db  # This model uses the 'game.db' database

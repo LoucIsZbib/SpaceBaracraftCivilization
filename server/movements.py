@@ -1,4 +1,4 @@
-from data import Planet, Player
+from server.data import Planet, Player
 import math
 from typing import List
 

@@ -1,7 +1,5 @@
 import pytest
-from orders import Orders, Command
-import production
-import movements
+from server.orders import Orders, Command
 
 def test_parsing_line():
     msg = """  \t TRANSFER 1 CU PL "Earth d'en bas" TR 'Firefly de la mort' BAS supercool """

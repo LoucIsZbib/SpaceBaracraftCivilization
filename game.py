@@ -5,8 +5,7 @@ import string
 import logging
 import yaml
 
-import newgame
-import play
+from server import play, newgame
 
 SHM_FOLDER = "/dev/shm/"
 

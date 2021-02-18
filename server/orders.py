@@ -1,8 +1,7 @@
 import re
-from time import time
 from typing import List
-import production
-import movements
+import server.production as production
+import server.movements as movements
 
 import logging
 # logging
@@ -113,10 +112,4 @@ class Command:
         return action
 
 
-if __name__ == "__main__":
-    file = "orders.EXAMPLE.txt"
-    start = time()
-    res = Orders.parsing_file(file)
-    stop = time()
-    print(f"{(stop-start)*1000:.3f} ms -- {res}")
 

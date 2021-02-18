@@ -6,9 +6,9 @@ import os
 
 # from typing import List
 
-import data
-from names import generate_name
-from production import food_planet_factor, meca_planet_factor
+import server.data as data
+from server.names import generate_name
+from server.production import food_planet_factor, meca_planet_factor
 
 
 # STANDARD GAME SETTINGS
@@ -35,7 +35,7 @@ def newgame(game_name: str, tmp_folder: str, config):
     logger.info("-- Creation of a new game --")
 
     # Creating folders
-    os.makedirs(tmp_folder + "orders", exist_ok=True)
+    os.makedirs(tmp_folder + "/orders", exist_ok=True)
 
     # Database selection
     db_name = tmp_folder + '+' + game_name + '.db'
@@ -61,6 +61,20 @@ def newgame(game_name: str, tmp_folder: str, config):
 
     # init game turn counter
     data.kv["game_turn"] = 0
+
+def generate_reports(players):
+    """
+    A report contains
+    a description of star system where the player has a colony/ship
+    a description of the colonies of the player
+    """
+    for player in players:
+        report = []
+        star_in_view = []
+        for colony in player.colonies:
+            report.append(colony.to_dict())
+            report.append(colony.planet.to_dict())
+            # TODO : à continuer
 
 def make_homes(players, galaxy_radius):
     """ Creating new star with new planets with custom properties adjusted to player
