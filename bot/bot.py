@@ -13,11 +13,11 @@ class Bot:
         return current_turn
 
     def play_turn(self, report):
-        self.turn = self.parse_report(report)
+        # self.turn = self.parse_report(report)  # DEBUG : ils sont déjà "parsé"
         self.orders = []
 
     def write_order(self):
-        with open(f"{self.game_folder}/orders.{self.name}.T{str(self.turn)}.txt", "w") as f:
+        with open(f"{self.game_folder}/orders/orders.{self.name}.T{str(self.turn)}.txt", "w") as f:
             f.writelines(self.orders)
 
 

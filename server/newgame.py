@@ -3,12 +3,15 @@ import random
 import numpy as np
 import logging
 import os
+import yaml
+import json
 
 # from typing import List
 
 import server.data as data
 from server.names import generate_name
 from server.production import food_planet_factor, meca_planet_factor
+from server.report import generate_reports, distribute_reports
 
 
 # STANDARD GAME SETTINGS
@@ -43,6 +46,9 @@ def newgame(game_name: str, tmp_folder: str, config):
     data.use_db(db_name, testing=True)  # DEBUG
     data.create_tables()
 
+    # init game turn counter
+    data.kv["game_turn"] = 0
+
     # Creates players
     players = create_player(config)
 
@@ -56,25 +62,12 @@ def newgame(game_name: str, tmp_folder: str, config):
     # for player in players:
     #     print(galaxy_status(player))
 
+    # generate reports for each players
+    reports = generate_reports(players)
+
     # send reports to players
-    pass
+    distribute_reports(reports, tmp_folder, channel="file-yaml")  # DEBUG
 
-    # init game turn counter
-    data.kv["game_turn"] = 0
-
-def generate_reports(players):
-    """
-    A report contains
-    a description of star system where the player has a colony/ship
-    a description of the colonies of the player
-    """
-    for player in players:
-        report = []
-        star_in_view = []
-        for colony in player.colonies:
-            report.append(colony.to_dict())
-            report.append(colony.planet.to_dict())
-            # TODO : à continuer
 
 def make_homes(players, galaxy_radius):
     """ Creating new star with new planets with custom properties adjusted to player

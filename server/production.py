@@ -30,7 +30,7 @@ Test results with numba :
 import math
 from typing import List
 
-from server.data import Planet, Player
+from server.data import Planet, Player, Colony
 
 import logging
 
@@ -46,6 +46,9 @@ OPTIMAL_TEMP_MECA = -50             # optimal temperature in °C for mechanical 
 OPTIMAL_RH_MECA = 0                 # optimal Humidity in % RH for mechanical species
 BASE_STD_TEMP = 20                  # base standard deviation for temperature adaptation (gaussian law, std)
 BASE_STD_RH = 10                    # base standard deviation for Humidity adaptation (gaussian law, std)
+POP_THRESHOLD = 2000                # Factor of max pop size in a colony
+BASE_MAINTENANCE = 1                # base cost of maintenance for 1 WF or 1 RO
+BASE_PRODUCTIVITY = 2               # base food/spare-parts generation per WF or RO
 
 
 def food_planet_factor(planet: Planet, player: Player):
@@ -55,7 +58,7 @@ def food_planet_factor(planet: Planet, player: Player):
     return temperature_factor * humidity_factor
 
 def meca_planet_factor(planet: Planet, player: Player):
-    """ Compute the factor of MECHANICAL productivity relative to planet environment and player attributes """
+    """ Compute the factor of MECHANICAL maintenance relative to planet environment and player attributes """
     temperature_factor = gauss_factor(planet.temperature, OPTIMAL_TEMP_MECA, BASE_STD_TEMP + player.tech.meca)
     humidity_factor = gauss_factor(planet.humidity, OPTIMAL_RH_MECA, BASE_STD_RH + player.tech.meca)
     return temperature_factor * humidity_factor
@@ -65,6 +68,20 @@ def gauss(x: float, moy: float, std: float):
 
 def gauss_factor(x: float, moy: float, std: float):
     return gauss(x, moy, std) / gauss(moy, moy, std)
+
+def food_production(colony: Colony):
+    """ Compute food balance for a colony (owned by a player) """
+    food_created = food_planet_factor(colony.planet, colony.player) * colony.WF * ( BASE_MAINTENANCE + BASE_PRODUCTIVITY * math.exp(-colony.WF/POP_THRESHOLD) )
+    food_maintenance = BASE_MAINTENANCE * colony.WF
+    food_balance = food_created - food_maintenance
+    return food_balance
+
+def meca_production(colony: Colony):
+    """ Compute spare-parts balance for a colony (owned by a player) """
+    spare_parts_created = BASE_PRODUCTIVITY * colony.RO
+    spare_parts_maintenance = 1  # TODO : implement algo for meca with saturation !
+    spare_parts_balance = spare_parts_created - spare_parts_maintenance
+    return spare_parts_balance
 
 def production_phase(orders):
     """

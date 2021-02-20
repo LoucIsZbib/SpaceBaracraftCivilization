@@ -4,6 +4,8 @@ import os
 from server.orders import Orders
 from server.production import production_phase
 from server.movements import movement_phase
+from server.report import generate_reports, distribute_reports
+from server.data import Player
 
 # logging
 logger = logging.getLogger("sbc")
@@ -23,7 +25,7 @@ def play_one_turn(game_name: str, tmp_folder: str):
     logger.info(f"play new turn")
 
     # retrieving orders
-    dirpath, dirnames, orders_files = os.walk(tmp_folder + "orders")
+    dirpath, dirnames, orders_files = os.walk(tmp_folder + "/orders")
 
     # parsing orders
     orders = [Orders(file) for file in orders_files]
@@ -40,7 +42,11 @@ def play_one_turn(game_name: str, tmp_folder: str):
     # Combat phase - everyone together
     # TODO : implement combat system
 
-    # send reports
-    pass
+    # generate reports for each players
+    players = Player.select()
+    reports = generate_reports(players)
+
+    # send reports to players
+    distribute_reports(reports, tmp_folder, channel="file-yaml")  # DEBUG
 
 

@@ -67,7 +67,7 @@ if __name__ == "__main__":
         with open("config.EXAMPLE.yml", "r") as f:
             config = yaml.safe_load(f)
 
-        newgame.newgame(args.game_name, args.tmp, config)
+        newgame(args.game_name, args.tmp, config)
 
     # --- NEW GAME FLAGS ---
     elif args.command == "play":

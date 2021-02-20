@@ -19,6 +19,7 @@ def use_db(path_to_db: str = "game", testing: bool = False):
 class Player(p.Model):
     name = p.CharField(unique=True)
     email = p.CharField()
+    wallet = p.IntegerField(default=0)
 
     @property
     def tech(self):
