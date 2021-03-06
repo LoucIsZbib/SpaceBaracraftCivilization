@@ -31,25 +31,12 @@ import math
 from typing import List
 
 from server.data import db, Planet, Player, Colony
+from server.sbc_parameters import *
 
 import logging
 
 # logging
 logger = logging.getLogger("sbc")
-
-NUMBA_WARNINGS = 0
-
-# STANDARD GAME SETTINGS
-OPTIMAL_TEMP_BIOLOGICAL = 25        # optimal temperature in °C for biological species
-OPTIMAL_RH_BIOLOGICAL = 100         # optimal Humidity in % RH for biological species
-OPTIMAL_TEMP_MECA = -50             # optimal temperature in °C for mechanical species
-OPTIMAL_RH_MECA = 0                 # optimal Humidity in % RH for mechanical species
-BASE_STD_TEMP = 20                  # base standard deviation for temperature adaptation (gaussian law, std)
-BASE_STD_RH = 10                    # base standard deviation for Humidity adaptation (gaussian law, std)
-POP_THRESHOLD = 2000                # Factor of max pop size in a colony
-BASE_MAINTENANCE_WF = 1             # base cost of maintenance for 1 WF
-BASE_MAINTENANCE_RO = 3             # base cost of maintenance for 1 WF or 1 RO
-BASE_PRODUCTIVITY = 2               # base food/spare-parts generation per WF or RO
 
 
 def food_planet_factor(planet: Planet, player: Player):

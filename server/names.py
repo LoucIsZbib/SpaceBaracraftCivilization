@@ -17,7 +17,7 @@ def generate_name():
             word += random.choice(CONSONANTS)
         else:
             word += random.choice(VOWELS)
-    return word
+    return word.capitalize()
 
 
 if __name__ == "__main__":

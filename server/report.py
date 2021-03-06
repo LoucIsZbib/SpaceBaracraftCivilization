@@ -69,7 +69,7 @@ class Report:
 
     def evaluate_player_status(self):
         return {
-            "wallet": self.player.wallet,
+            "EU": self.player.EU,
             "technologies":
                 {"bio": self.player.bio,
                  "meca": self.player.meca

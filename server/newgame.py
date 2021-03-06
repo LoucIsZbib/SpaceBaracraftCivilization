@@ -12,22 +12,7 @@ import server.data as data
 from server.names import generate_name
 from server.production import food_planet_factor, meca_planet_factor
 from server.report import generate_initial_reports, distribute_reports
-
-
-# STANDARD GAME SETTINGS
-STAR_DENSITY_PER_PLAYER = 5     # 6 by player from FarHorizons balance, one is custom-made for each player
-GALAXY_DENSITY = 80             # approx from FH = 80 parsec3 / star
-MAX_PLANETS_PER_STARS = 7       # as approx seen from FH
-MAX_PLANET_SIZE = 5000          # see wiki for planet size and influence on productivity by overpopulation
-MIN_PLANET_SIZE = 500           # see wiki for planet size and influence on productivity by overpopulation
-BIO_START_TEMP = 25             # start temperature for biological player
-BIO_START_HR = 90               # start HR for biological player
-MECA_START_TEMP = -50           # start temperature for mecanichal player
-MECA_START_HR = 10              # start HR for mechanical player
-START_PLANET_SIZE = 3000        # size of initial planet, same for all players
-PLAYER_START_POINTS = 20        # number of points to share between BIO and MECA for new player
-COLONY_START_POP = 100          # size of population on first colony
-
+from server.sbc_parameters import *
 
 # logging
 logger = logging.getLogger("sbc")
@@ -35,15 +20,15 @@ logger = logging.getLogger("sbc")
 
 def newgame(game_name: str, tmp_folder: str, config):
     """ script to create the game objects """
-    logger.info("-- Creation of a new game --")
+    logger.info(f"{LOG_LEVEL(1)}---- Creation of a new game ----")
 
     # Creating folders
     os.makedirs(tmp_folder + "/orders", exist_ok=True)
 
     # Database selection
     db_name = tmp_folder + '/' + game_name + '.db'
-    logger.debug(f"   using {db_name}")
-    data.use_db(db_name, testing=True)  # DEBUG
+    # logger.debug(f"{LOG_LEVEL(2)}using {db_name}")    # DEBUG
+    data.use_db(db_name, testing=True)                  # DEBUG
     data.create_tables()
 
     # init game turn counter
@@ -73,7 +58,7 @@ def make_homes(players, galaxy_radius):
     """ Creating new star with new planets with custom properties adjusted to player
         Also create a first colony
      """
-    logger.info("making homes")
+    logger.info(f"{LOG_LEVEL(2)}-- Making homes --")
     for player in players:
         # generate new star
         has_been_created = False
@@ -81,12 +66,12 @@ def make_homes(players, galaxy_radius):
             x, y, z = generate_star(galaxy_radius)
             case, has_been_created = data.Case.get_or_create(x=x, y=y, z=z)
             if case.star:
-                logger.debug(f"case {x} {y} {z} has star, reroll")
+                logger.debug(f"{LOG_LEVEL(3)}case {x} {y} {z} has star, reroll")
             else:
-                logger.debug(f"case {x} {y} {z} doesn't have a star, creating one for home planet")
+                logger.debug(f"{LOG_LEVEL(3)}case {x} {y} {z} doesn't have a star, creating one for home planet")
                 star = data.Star.create(case=case, name=generate_name())
 
-        logger.info(f"   creating new star ({star.name}) and 4 planets for player {player.name}")
+        logger.info(f"{LOG_LEVEL(3)}creating new star ({star.name}) and 4 planets for player {player.name}")
 
         # create custom planets for equal start condition
         """start condition : 4 planets, 1 suitable, 1 almost suitable, 2 not suitable"""
@@ -111,7 +96,7 @@ def make_homes(players, galaxy_radius):
 
 def create_player(config):
     players_name_email = [{"name": player["name"], "email": player["email"]} for player in config["players"]]
-    logger.info(f"Creating {len(players_name_email)} Players")
+    logger.info(f"{LOG_LEVEL(2)}-- Creating {len(players_name_email)} Players")
     data.Player.insert_many(players_name_email).execute()
     # useless : if unique constraint is violated, previous instruction raised exception and interrupt the program
     # if len(data.Player.select()) != len(config["players"]):
@@ -119,7 +104,7 @@ def create_player(config):
     #     raise Exception(f"NEWGAME : number of inserted players ({len(data.Player.select())}) is different from config ({len(config['players'])})")
     players = data.Player.select()
     for player in players:
-        logger.debug(f"   player {player.name} added")
+        logger.debug(f"{LOG_LEVEL(3)}+ player {player.name} added")
 
     # Initialize tech levels
     tech = []
@@ -172,7 +157,7 @@ def create_galaxy(nb_of_player: int,
     1. random nb of planets
     2. define randomly characteristics of each planet
     """
-    logger.info("Galaxy creation")
+    logger.info(f"{LOG_LEVEL(2)}-- Galaxy creation --")
 
     # number of stars
     nb_of_stars = player_density * nb_of_player
@@ -189,7 +174,7 @@ def create_galaxy(nb_of_player: int,
     # store stars
     data.Case.insert_many(stars_xyz).execute()
     cases = data.Case.select()
-    logger.info(f"   number of stars created : {len(cases)}")
+    logger.info(f"{LOG_LEVEL(3)}number of stars created : {len(cases)}")
     with data.db.atomic():
         for case in cases:
             data.Star.create(case=case, name=generate_name())
@@ -198,13 +183,13 @@ def create_galaxy(nb_of_player: int,
     planets = []
     for star in data.Star.select():
         nb_of_planet = random.randrange(0, max_planets_per_star, 1)
-        logger.debug(f"{star.name}  x: {star.case.x:>2} y: {star.case.y:>2} x: {star.case.z:>2}")
+        logger.debug(f"{LOG_LEVEL(3)}{star.name}  x: {star.case.x:>2} y: {star.case.y:>2} x: {star.case.z:>2}")
 
         for i in range(nb_of_planet):
             humidity, temperature, atmosphere, size = generate_planet(i+1)
             planets.append({"star": star.get_id(), "numero": i+1, "humidity": humidity, "temperature": temperature, "size": size, "atmosphere": atmosphere})
     data.Planet.insert_many(planets).execute()
-    logger.info(f"   number of planets created : {len(data.Planet.select())}")
+    logger.info(f"{LOG_LEVEL(3)}number of planets created : {len(data.Planet.select())}")
 
     return galaxy_radius
 
@@ -230,7 +215,7 @@ def generate_planet(numero):
     temperature = custom_asymetrical_rnd(-270, 20, 1000, cohesion=3)
     atmosphere = custom_asymetrical_rnd(0, 1, 90, cohesion=3)
     size = random.randrange(MIN_PLANET_SIZE, MAX_PLANET_SIZE, 10)
-    logger.debug(f"   planet_nb: {numero}   humidity= {humidity:>6.2f}   temperature={temperature:>7.1f}   size={size:>4}   atmosphere={atmosphere:>7.3f}")
+    logger.debug(f"{LOG_LEVEL(4)}planet_nb: {numero}   humidity= {humidity:>6.2f}   temperature={temperature:>7.1f}   size={size:>4}   atmosphere={atmosphere:>7.3f}")
 
     return humidity, temperature, atmosphere, size
 
@@ -241,7 +226,7 @@ def generate_custom_planet(bio: int, meca: int, planet_size: int = START_PLANET_
     temperature = MECA_START_TEMP + bio * (BIO_START_TEMP - MECA_START_TEMP) / PLAYER_START_POINTS
     atmosphere = custom_asymetrical_rnd(0, 1, 90, cohesion=3)
     size = planet_size
-    logger.debug(f"   custom planet :   humidity= {humidity:>6.2f}   temperature={temperature:>7.1f}   size={size:>4}   atmosphere={atmosphere:>7.3f}")
+    logger.debug(f"{LOG_LEVEL(4)}custom planet :   humidity= {humidity:>6.2f}   temperature={temperature:>7.1f}   size={size:>4}   atmosphere={atmosphere:>7.3f}")
 
     return humidity, temperature, atmosphere, size
 

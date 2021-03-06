@@ -9,7 +9,7 @@ from server.movements import movement_phase
 from server.report import Report
 from server.report import distribute_reports
 from server.data import Player, db, kv
-from server.sbc_item_names import EU, FOOD, PARTS
+from server.sbc_parameters import FOOD, PARTS, EU, LOG_LEVEL
 from server.research import upgrade_tech
 from server import data
 
@@ -29,13 +29,14 @@ def play_one_turn(game_name: str, tmp_folder: str):
         then rm the reports OR archive them
 
     """
-    logger.info(f"play new turn")
+    logger.info(f"{LOG_LEVEL(1)}-- Game engine running for a new turn --")
     # new turn
     data.kv["game_turn"] += 1
 
     # retrieving orders
     for dirpath, dirnames, orders_files in os.walk(tmp_folder + "/orders"):
         break
+    logger.debug(f"{LOG_LEVEL(2)}{len(orders_files)} orders files found")
 
     # parsing orders
     new_turns = []
@@ -46,23 +47,28 @@ def play_one_turn(game_name: str, tmp_folder: str):
 
     # executing orders, game stage by game stage
     # production phase - all players one after the other
+    logger.debug(f"{LOG_LEVEL(2)}Production phase")
     for new_turn in new_turns:
         new_turn.production_phase()
 
     # movement phase - all players one after the other
+    logger.debug(f"{LOG_LEVEL(2)}Movement phase")
     for new_turn in new_turns:
         new_turn.movement_phase()
 
     # Combat phase - everyone together
     # TODO : implement combat system
+    logger.debug(f"{LOG_LEVEL(2)}Combat phase")
 
     # generate reports for each players
+    logger.debug(f"{LOG_LEVEL(2)}Reports generation")
     reports = {}
     for new_turn in new_turns:
         new_turn.report.generate_status_report()
         reports[new_turn.player] = new_turn.report
 
     # send reports to players
+    logger.debug(f"{LOG_LEVEL(2)}Report distribution")
     distribute_reports(reports, tmp_folder, channel="file-yaml")  # DEBUG
 
 
@@ -87,6 +93,8 @@ class NewTurn:
             action = NewTurn.build
         elif cmd == "research":
             action = NewTurn.research
+        elif cmd == "sell":
+            action = NewTurn.sell
 
         # Movements
         elif cmd == "jump":
@@ -97,6 +105,8 @@ class NewTurn:
             # TODO: imagining the combat system in order to handle simultaneity
             action = "combat"
 
+        logger.debug(f"{LOG_LEVEL(5)}'{cmd}' --> {action}")
+
         return action
 
     def production_phase(self):
@@ -105,8 +115,10 @@ class NewTurn:
         1- ressources gathering (including maintenance costs)
         2- ordres execution
         """
+        logger.debug(f"{LOG_LEVEL(3)}Player {self.player.name}")
         with db.atomic():
             for colony in self.player.colonies:
+                logger.debug(f"{LOG_LEVEL(4)}Colony {colony.name}")
                 # initializing production report for this colony
                 self.report.initialize_prod_report(colony.name)
 
@@ -121,7 +133,8 @@ class NewTurn:
                 self.current_colony = colony
 
                 # orders execution for this colony
-                for command in self.orders.prod_cmd[colony.name]:
+                for command in self.orders.prod_cmd[colony.name.lower()]:
+                    logger.debug(f"{LOG_LEVEL(5)}cmd: {command}")
                     action = NewTurn.assign_action(command[0])
                     action(self, command[1:])
 
@@ -133,25 +146,29 @@ class NewTurn:
     def check_if_ressources_are_available(self, qty: int, currency_type: str):
         """
         1- get max available from request
-        2- Remove currency from stock/wallet
+        2- Remove currency from stock/EU
 
-        if currency is EU, first check wallet, then perform automatic conversion from food or parts
+        if currency is EU, first check EU, then perform automatic conversion from food or parts
         """
+        # no negative spending
+        if qty < 0:
+            qty = 0
 
         available = 0
         if currency_type == EU:
             # 1 - check availability
-            # check in player wallet first
-            if self.player.wallet >= qty:
+            # check in player EU first
+            if self.player.EU >= qty:
                 available = qty
             else:
                 # TODO : we need to transform EU from food or parts if not enough EU
                 # Currently, we use all available
-                available = self.player.wallet
+                available = self.player.EU
                 self.report.record_prod(f"{qty} EU requested, {available} only available")
+                logger.debug(f"{LOG_LEVEL(5)}{qty} EU requested, {available} only available")
 
-            # 2 - remove spend amount from wallet
-            self.player.wallet -= available
+            # 2 - remove spend amount from EU
+            self.player.EU -= available
 
         elif currency_type == FOOD:
             # 1 - check availability
@@ -160,6 +177,7 @@ class NewTurn:
             else:
                 available = self.current_colony.food
                 self.report.record_prod(f"{qty} FOOD requested, {available} only available")
+                logger.debug(f"{LOG_LEVEL(5)}{qty} FOOD requested, {available} only available")
             # 2 - remove spend amount from stock
             self.current_colony.food -= available
 
@@ -170,6 +188,7 @@ class NewTurn:
             else:
                 available = self.current_colony.parts
                 self.report.record_prod(f"{qty} PARTS requested, {available} only available")
+                logger.debug(f"{LOG_LEVEL(5)}{qty} PARTS requested, {available} only available")
             # 2 - remove spend amount from stock
             self.current_colony.parts -= available
 
@@ -186,6 +205,17 @@ class NewTurn:
 
         level, gain = upgrade_tech(self.player, tech_str, available)
         self.report.record_prod(f"Research investissement of {qty} : Tech {tech_str} level is now {level} (+{gain})")
+        logger.debug(f"{LOG_LEVEL(5)}Research investissement of {qty} : Tech {tech_str} level is now {level} (+{gain})")
+
+    def sell(self, arguments: List[str]):
+        qty = int(arguments[0])
+        what = arguments[1]
+
+        available = self.check_if_ressources_are_available(qty, what)
+
+        self.player.EU += available
+        self.report.record_prod(f"Selling {qty} {what.upper()} for {qty} EU")
+        logger.debug(f"{LOG_LEVEL(5)}Selling {qty} {what.upper()} for {qty} EU")
 
     def jump(self):
         pass

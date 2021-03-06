@@ -19,7 +19,7 @@ def use_db(path_to_db: str = "game", testing: bool = False):
 class Player(p.Model):
     name = p.CharField()
     email = p.CharField()
-    wallet = p.IntegerField(default=0)
+    EU = p.IntegerField(default=0)
 
     @property
     def bio(self):
@@ -95,7 +95,9 @@ class Colony(p.Model):
         return {
             "colony_name": self.name,
             "WF": self.WF,
-            "RO": self.RO
+            "RO": self.RO,
+            "food": self.food,
+            "parts": self.parts
         }
 
     class Meta:

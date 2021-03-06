@@ -19,6 +19,8 @@ class Bot:
 
         for colony in self.report["colonies_status"]:
             self.orders.append(f"PRODUCTION PL {colony['colony_name']}")
+            self.orders.append(f"SELL {colony['food']} food")
+            self.orders.append(f"SELL {colony['parts']} meca")
             self.orders.append("RESEARCH 100 BIO")
 
         self.orders.append(f"MOVEMENTS")
