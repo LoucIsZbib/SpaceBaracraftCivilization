@@ -2,6 +2,7 @@ import logging
 import os
 from typing import List
 from peewee import fn
+from time import time
 
 from server.orders import Orders
 import server.production as prod
@@ -34,6 +35,7 @@ def play_one_turn(game_name: str, tmp_folder: str):
     data.kv["game_turn"] += 1
 
     # retrieving orders
+    start = time()
     for dirpath, dirnames, orders_files in os.walk(tmp_folder + "/orders"):
         break
     logger.debug(f"{LOG_LEVEL(2)}{len(orders_files)} orders files found")
@@ -44,24 +46,36 @@ def play_one_turn(game_name: str, tmp_folder: str):
         orders = Orders(dirpath + "/" + file)
         player = Player.get(fn.LOWER(Player.name) == orders.player_name)
         new_turns.append(NewTurn(player, orders))
+    stop = time()
+    logger.debug(f"{LOG_LEVEL(2)}# Timing # orders retrieving and parsing in {(stop - start) * 1000:.1f} ms")
 
     # executing orders, game stage by game stage
     # production phase - all players one after the other
     logger.debug(f"{LOG_LEVEL(2)}Production phase")
+    start = time()
     for new_turn in new_turns:
         new_turn.production_phase()
+    stop = time()
+    logger.debug(f"{LOG_LEVEL(2)}# Timing # Production phase in {(stop - start) * 1000:.1f} ms")
 
     # movement phase - all players one after the other
+    start = time()
     logger.debug(f"{LOG_LEVEL(2)}Movement phase")
     for new_turn in new_turns:
         new_turn.movement_phase()
+    stop = time()
+    logger.debug(f"{LOG_LEVEL(2)}# Timing # Movement phase in {(stop - start) * 1000:.1f} ms")
 
     # Combat phase - everyone together
     # TODO : implement combat system
     logger.debug(f"{LOG_LEVEL(2)}Combat phase")
+    start = time()
+    stop = time()
+    logger.debug(f"{LOG_LEVEL(2)}# Timing # Combat phase in {(stop - start) * 1000:.1f} ms")
 
     # generate reports for each players
     logger.debug(f"{LOG_LEVEL(2)}Reports generation")
+    start = time()
     reports = {}
     for new_turn in new_turns:
         new_turn.report.generate_status_report()
@@ -70,6 +84,8 @@ def play_one_turn(game_name: str, tmp_folder: str):
     # send reports to players
     logger.debug(f"{LOG_LEVEL(2)}Report distribution")
     distribute_reports(reports, tmp_folder, channel="file-yaml")  # DEBUG
+    stop = time()
+    logger.debug(f"{LOG_LEVEL(2)}# Timing # Reports creation and distribution in {(stop - start) * 1000:.1f} ms")
 
 
 class NewTurn:
