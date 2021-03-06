@@ -11,6 +11,7 @@ def get_report(player_name: str, working_folder: str, turn: int):
         report = yaml.safe_load(f)
     return report
 
+
 if __name__ == "__main__":
 
     # init game settings

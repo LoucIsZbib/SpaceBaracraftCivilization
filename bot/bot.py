@@ -9,15 +9,23 @@ class Bot:
         self.orders = []
 
     def parse_report(self, report):
+        self.report = report
         current_turn = 0
         return current_turn
 
     def play_turn(self, report):
-        # self.turn = self.parse_report(report)  # DEBUG : ils sont déjà "parsé"
-        self.orders = []
+        self.turn = self.parse_report(report)  # DEBUG : ils sont déjà "parsé"
+        self.orders = [f"player {self.name}"]
+
+        for colony in self.report["colonies_status"]:
+            self.orders.append(f"PRODUCTION PL {colony['colony_name']}")
+            self.orders.append("RESEARCH 100 BIO")
+
+        self.orders.append(f"MOVEMENTS")
+        self.orders.append(f"COMBAT")
 
     def write_order(self):
         with open(f"{self.game_folder}/orders/orders.{self.name}.T{str(self.turn)}.txt", "w") as f:
-            f.writelines(self.orders)
+            f.write('\n'.join(self.orders))      # adding line separators (='\n') between each item of the list
 
 

@@ -11,7 +11,7 @@ import json
 import server.data as data
 from server.names import generate_name
 from server.production import food_planet_factor, meca_planet_factor
-from server.report import generate_reports, distribute_reports
+from server.report import generate_initial_reports, distribute_reports
 
 
 # STANDARD GAME SETTINGS
@@ -41,7 +41,7 @@ def newgame(game_name: str, tmp_folder: str, config):
     os.makedirs(tmp_folder + "/orders", exist_ok=True)
 
     # Database selection
-    db_name = tmp_folder + '+' + game_name + '.db'
+    db_name = tmp_folder + '/' + game_name + '.db'
     logger.debug(f"   using {db_name}")
     data.use_db(db_name, testing=True)  # DEBUG
     data.create_tables()
@@ -52,7 +52,7 @@ def newgame(game_name: str, tmp_folder: str, config):
     # Creates players
     players = create_player(config)
 
-    # Create galaxyplayer.tech.bio
+    # Create galaxy
     galaxy_radius = create_galaxy(len(players))
     # print(galaxy_status())
 
@@ -63,7 +63,7 @@ def newgame(game_name: str, tmp_folder: str, config):
     #     print(galaxy_status(player))
 
     # generate reports for each players
-    reports = generate_reports(players)
+    reports = generate_initial_reports(players)
 
     # send reports to players
     distribute_reports(reports, tmp_folder, channel="file-yaml")  # DEBUG
@@ -94,9 +94,9 @@ def make_homes(players, galaxy_radius):
         planets = []
         for i in range(1, 5):
             if i == home_planet_nb:
-                humidity, temperature, atmosphere, size = generate_custom_planet(player.tech.bio, player.tech.meca, START_PLANET_SIZE)
+                humidity, temperature, atmosphere, size = generate_custom_planet(player.bio, player.meca, START_PLANET_SIZE)
             elif i == second_planet:
-                humidity, temperature, atmosphere, size = generate_custom_planet(player.tech.meca, player.tech.bio, int(START_PLANET_SIZE * 1.5))
+                humidity, temperature, atmosphere, size = generate_custom_planet(player.meca, player.bio, int(START_PLANET_SIZE * 1.5))
             else:
                 humidity, temperature, atmosphere, size = generate_planet(i)
             planets.append({"star": star, "numero": i, "humidity": humidity, "temperature": temperature, "size": size, "atmosphere": atmosphere})
@@ -104,10 +104,10 @@ def make_homes(players, galaxy_radius):
 
         # make home colony
         # adjust pop size between bio and meca
-        working_force = int(COLONY_START_POP * player.tech.bio / PLAYER_START_POINTS)
-        robots = int(COLONY_START_POP * player.tech.meca / PLAYER_START_POINTS)
+        working_force = int(COLONY_START_POP * player.bio / PLAYER_START_POINTS)
+        robots = int(COLONY_START_POP * player.meca / PLAYER_START_POINTS)
         planet = data.Planet.get(star=star, numero=home_planet_nb)
-        data.Colony.create(planet=planet, owner=player, WF=working_force, RO=robots)
+        data.Colony.create(planet=planet, player=player, WF=working_force, RO=robots, name=generate_name())
 
 def create_player(config):
     players_name_email = [{"name": player["name"], "email": player["email"]} for player in config["players"]]
@@ -123,13 +123,15 @@ def create_player(config):
 
     # Initialize tech levels
     tech = []
-    for player in config["players"]:
-        bio = player["bio"]
-        meca = player["meca"]
+    for player_config in config["players"]:
+        player = data.Player.get(data.Player.name == player_config["name"])
+        bio = player_config["bio"]
+        meca = player_config["meca"]
         if bio + meca != PLAYER_START_POINTS:
             raise ValueError(
                 f"player BIO and MECA levels are incorrects : BIO({bio}) + MECA({meca}) != start_points({PLAYER_START_POINTS})")
-        tech.append({"player": data.Player.get(data.Player.name == player["name"]), "bio": bio, "meca": meca})
+        tech.append({"player": player, "tech": "bio", "level": bio})
+        tech.append({"player": player, "tech": "meca", "level": meca})
     data.Tech.insert_many(tech).execute()
 
     return players

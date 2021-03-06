@@ -17,24 +17,27 @@ def use_db(path_to_db: str = "game", testing: bool = False):
     kv = KeyValue(database=db, table_name="keyvalue")
 
 class Player(p.Model):
-    name = p.CharField(unique=True)
+    name = p.CharField()
     email = p.CharField()
     wallet = p.IntegerField(default=0)
 
     @property
-    def tech(self):
-        return self.techs.get()
+    def bio(self):
+        return self.techs.where(Tech.tech == "bio").get().level
+
+    @property
+    def meca(self):
+        return self.techs.where(Tech.tech == "meca").get().level
 
     class Meta:
         database = db  # This model uses the 'game.db' database
+        constraints = [p.SQL('UNIQUE ("name" COLLATE NOCASE)')]
 
 class Tech(p.Model):
-    player = p.ForeignKeyField(Player, backref="techs", unique=True)
-    bio = p.IntegerField()
-    meca = p.IntegerField()
-
-    bio_points = p.IntegerField(default=0)
-    meca_points = p.IntegerField(default=0)
+    player = p.ForeignKeyField(Player, backref="techs")
+    tech = p.CharField()
+    level = p.IntegerField()
+    progression = p.IntegerField(default=0)
 
     class Meta:
         database = db  # This model uses the 'game.db' database
@@ -52,10 +55,11 @@ class Case(p.Model):
 
 class Star(p.Model):
     case = p.ForeignKeyField(Case, backref='star')
-    name = p.CharField(default=generate_name())
+    name = p.CharField()
 
     class Meta:
         database = db  # This model uses the 'game.db' database
+        constraints = [p.SQL('UNIQUE ("name" COLLATE NOCASE)')]
 
 class Planet(p.Model):
     star = p.ForeignKeyField(Star, backref='planets')
@@ -80,10 +84,12 @@ class Planet(p.Model):
 
 class Colony(p.Model):
     planet = p.ForeignKeyField(Planet, backref="colony")
-    owner = p.ForeignKeyField(Player, backref="colonies")
-    name = p.CharField(default=generate_name())
+    player = p.ForeignKeyField(Player, backref="colonies")
+    name = p.CharField()
     WF = p.IntegerField(default=0)
     RO = p.IntegerField(default=0)
+    food = p.IntegerField(default=0)
+    parts = p.IntegerField(default=0)
 
     def to_dict(self):
         return {
@@ -95,8 +101,9 @@ class Colony(p.Model):
     class Meta:
         database = db  # This model uses the 'game.db' database
         indexes = (
-            (("planet", "owner"), True),  # unique index sur star and numero
+            (("planet", "player"), True),  # unique index sur star and numero
         )
+        constraints = [p.SQL('UNIQUE ("name" COLLATE NOCASE)')]
 
 def create_tables():
     db.create_tables([Player, Tech, Case, Star, Planet, Colony])

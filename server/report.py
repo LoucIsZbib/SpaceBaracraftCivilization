@@ -5,7 +5,7 @@ from server.production import food_planet_factor, meca_planet_factor
 import yaml
 import json
 
-def generate_reports(players):
+def generate_initial_reports(players):
     """
     A report contains
     a description of star system where the player has a colony/ship
@@ -13,7 +13,9 @@ def generate_reports(players):
     """
     reports = {}
     for player in players:
-        reports[player] = Report(player)
+        report = Report(player)
+        report.generate_status_report()
+        reports[player] = report
     return reports
 
 def distribute_reports(reports: dict, tmp_folder: str, channel: str):
@@ -34,11 +36,29 @@ class Report:
     def __init__(self, player: Player):
         self.player = player
 
+        # initialisation for out of object manipulation
+        self.prod_status = {}
+        self.current_prod = None
+
+        # initialisation for pycharm check
+        self.turn = None
+        self.player_status = None
+        self.colonies_status = None
+        self.stars_visible = None
+
+    def generate_status_report(self):
         self.turn = data.kv["game_turn"]
 
         self.player_status = self.evaluate_player_status()
         self.colonies_status = self.evaluate_colonies_status()
         self.stars_visible = self.evaluate_stars_visible()
+
+    def initialize_prod_report(self, colony_name: str):
+        self.current_prod = []
+        self.prod_status[colony_name] = self.current_prod
+
+    def record_prod(self, msg: str):
+        self.current_prod.append(msg)
 
     def to_dict(self):
         return {
@@ -51,8 +71,8 @@ class Report:
         return {
             "wallet": self.player.wallet,
             "technologies":
-                {"bio": self.player.tech.bio,
-                 "meca": self.player.tech.meca
+                {"bio": self.player.bio,
+                 "meca": self.player.meca
                  }
         }
 
