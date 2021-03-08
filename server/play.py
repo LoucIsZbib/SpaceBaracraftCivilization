@@ -121,7 +121,7 @@ class NewTurn:
             # TODO: imagining the combat system in order to handle simultaneity
             action = "combat"
 
-        logger.debug(f"{LOG_LEVEL(5)}'{cmd}' --> {action}")
+        # logger.debug(f"{LOG_LEVEL(5)}'{cmd}' --> {action}")  # DEBUG if problem only, too ugly otherwise
 
         return action
 
@@ -141,11 +141,12 @@ class NewTurn:
                 # Ressources gathering (maintenance cost already counted)
                 food_prod = prod.food_production(colony)
                 colony.food += food_prod
-                self.report.record_prod(f"food net income = {food_prod}")
+                self.report.record_prod(f"food net income = {food_prod:.1f}")
+                logger.debug(f"{LOG_LEVEL(5)}food net income = {food_prod:.1f}")
                 parts_prod = prod.meca_production(colony)
                 colony.parts += parts_prod
-                self.report.record_prod(f"parts net income = {parts_prod}")
-                # colony.save()  # test with later saving
+                self.report.record_prod(f"parts net income = {parts_prod:.1f}")
+                logger.debug(f"{LOG_LEVEL(5)}parts net income = {parts_prod:.1f}")
                 self.current_colony = colony
 
                 # orders execution for this colony
@@ -154,7 +155,9 @@ class NewTurn:
                     action = NewTurn.assign_action(command[0])
                     action(self, command[1:])
 
+                # saving data
                 colony.save()
+                self.player.save()
 
     def movement_phase(self):
         pass
@@ -177,7 +180,7 @@ class NewTurn:
             if self.player.EU >= qty:
                 available = qty
             else:
-                # TODO : we need to transform EU from food or parts if not enough EU
+                # TODO : we need to transform automatically EU from food or parts if not enough EU (?)
                 # Currently, we use all available
                 available = self.player.EU
                 self.report.record_prod(f"{qty} EU requested, {available} only available")
@@ -220,8 +223,8 @@ class NewTurn:
         available = self.check_if_ressources_are_available(qty, EU)
 
         level, gain = upgrade_tech(self.player, tech_str, available)
-        self.report.record_prod(f"Research investissement of {qty} : Tech {tech_str} level is now {level} (+{gain})")
-        logger.debug(f"{LOG_LEVEL(5)}Research investissement of {qty} : Tech {tech_str} level is now {level} (+{gain})")
+        self.report.record_prod(f"Research investissement of {available} : Tech {tech_str} level is now {level} (+{gain})")
+        logger.debug(f"{LOG_LEVEL(5)}Research investissement of {available} : Tech {tech_str} level is now {level} (+{gain})")
 
     def sell(self, arguments: List[str]):
         qty = int(arguments[0])

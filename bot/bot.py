@@ -18,9 +18,11 @@ class Bot:
         self.orders = [f"player {self.name}"]
 
         for colony in self.report["colonies_status"]:
+            available_food = int(colony["food"] + colony["food_production"])
+            available_parts = int(colony["parts"] + colony["parts_production"])
             self.orders.append(f"PRODUCTION PL {colony['colony_name']}")
-            self.orders.append(f"SELL {colony['food']} food")
-            self.orders.append(f"SELL {colony['parts']} meca")
+            self.orders.append(f"SELL {available_food} food")
+            self.orders.append(f"SELL {available_parts} parts")
             self.orders.append("RESEARCH 100 BIO")
 
         self.orders.append(f"MOVEMENTS")

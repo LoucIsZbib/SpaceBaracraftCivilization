@@ -26,6 +26,7 @@ players:
         email: "glados@example.com"
         bio :  5
         meca : 15
+        prefered_temperature : 450
 
     # player 2
     -
@@ -33,6 +34,7 @@ players:
         email: "hal9000@example.com"
         bio :  15
         meca : 5
+        prefered_temperature : -150
 
     # player 3
     -
@@ -40,4 +42,5 @@ players:
         email: "discovery@example.com"
         bio :  8
         meca : 12
+        prefered_temperature : 25
 

@@ -1,6 +1,7 @@
 from server.data import Player, Colony, Planet
 import server.data as data
 from server.production import food_planet_factor, meca_planet_factor
+import server.production as prod
 
 import yaml
 import json
@@ -80,9 +81,12 @@ class Report:
         status = []
         for colony in self.player.colonies:
             colony_status = colony.to_dict()
+            colony_status["food_production"] = prod.food_production(colony)
+            colony_status["parts_production"] = prod.meca_production(colony)
             colony_status["planet"] = colony.planet.to_dict()
             colony_status["planet"]["food_factor"] = food_planet_factor(colony.planet, self.player)
             colony_status["planet"]["meca_factor"] = meca_planet_factor(colony.planet, self.player)
+
             status.append(colony_status)
         return status
 

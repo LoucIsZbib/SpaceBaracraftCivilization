@@ -20,6 +20,7 @@ class Player(p.Model):
     name = p.CharField()
     email = p.CharField()
     EU = p.IntegerField(default=0)
+    prefered_temperature = p.IntegerField()
 
     @property
     def bio(self):

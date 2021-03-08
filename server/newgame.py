@@ -79,9 +79,9 @@ def make_homes(players, galaxy_radius):
         planets = []
         for i in range(1, 5):
             if i == home_planet_nb:
-                humidity, temperature, atmosphere, size = generate_custom_planet(player.bio, player.meca, START_PLANET_SIZE)
+                humidity, temperature, atmosphere, size = generate_custom_planet(50, player.prefered_temperature, START_PLANET_SIZE)
             elif i == second_planet:
-                humidity, temperature, atmosphere, size = generate_custom_planet(player.meca, player.bio, int(START_PLANET_SIZE * 1.5))
+                humidity, temperature, atmosphere, size = generate_custom_planet(player.bio * 100/PLAYER_START_POINTS, player.prefered_temperature, int(START_PLANET_SIZE * 1.5))
             else:
                 humidity, temperature, atmosphere, size = generate_planet(i)
             planets.append({"star": star, "numero": i, "humidity": humidity, "temperature": temperature, "size": size, "atmosphere": atmosphere})
@@ -95,7 +95,7 @@ def make_homes(players, galaxy_radius):
         data.Colony.create(planet=planet, player=player, WF=working_force, RO=robots, name=generate_name())
 
 def create_player(config):
-    players_name_email = [{"name": player["name"], "email": player["email"]} for player in config["players"]]
+    players_name_email = [{"name": player["name"], "email": player["email"], "prefered_temperature": player["prefered_temperature"]} for player in config["players"]]
     logger.info(f"{LOG_LEVEL(2)}-- Creating {len(players_name_email)} Players")
     data.Player.insert_many(players_name_email).execute()
     # useless : if unique constraint is violated, previous instruction raised exception and interrupt the program
@@ -219,11 +219,9 @@ def generate_planet(numero):
 
     return humidity, temperature, atmosphere, size
 
-def generate_custom_planet(bio: int, meca: int, planet_size: int = START_PLANET_SIZE):
+def generate_custom_planet(humidity: int, temperature: int, planet_size: int = START_PLANET_SIZE):
     """ Create a custom planet to fit player characteristics """
     solid = True
-    humidity = MECA_START_HR + bio * (BIO_START_HR - MECA_START_HR) / PLAYER_START_POINTS
-    temperature = MECA_START_TEMP + bio * (BIO_START_TEMP - MECA_START_TEMP) / PLAYER_START_POINTS
     atmosphere = custom_asymetrical_rnd(0, 1, 90, cohesion=3)
     size = planet_size
     logger.debug(f"{LOG_LEVEL(4)}custom planet :   humidity= {humidity:>6.2f}   temperature={temperature:>7.1f}   size={size:>4}   atmosphere={atmosphere:>7.3f}")
