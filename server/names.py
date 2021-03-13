@@ -1,5 +1,5 @@
 import random
-import string
+# import string
 
 VOWELS = ["a", "e", "i", "o", "u", "y", "ou", "au", "eu", "ei", "ai", "ay", "ey", "ua"]
 # CONSONANTS = ", ".join(set(string.ascii_lowercase) - set(VOWELS))
