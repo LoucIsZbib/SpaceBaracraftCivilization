@@ -50,6 +50,16 @@ COST_RO = 5                         # cost for manufacturing 1 RO. Money is part
 COST_RESEARCH = 1                   # basic cost for research : 1 EU gives 1 Research_points (+ random)
 SELL_TO_GET_EU = 1                  # change ratio when selling food or parts
 
+# ships : name, cost, maintenance, power, cargo, jump_range ...
+COST_LEVEL_FIGHTER = 100            # cost for 1 level of Fighter, multiply by level to get ship cost
+COST_SCOUT = 100                    # unique cost, scout are mono-level
+COST_LEVEL_CARGO = 100              # cost for 1 level of Cargo, multiply by level to get ship cost
+BIO_FIGHTER = "bf"
+BIO_SCOUT = "bs"
+BIO_CARGO = "bc"
+MECA_FIGHTER = "mf"
+MECA_SCOUT = "ms"
+MECA_CARGO = "mc"
 
 def LOG_LEVEL(level: int):
     spacing = "   "

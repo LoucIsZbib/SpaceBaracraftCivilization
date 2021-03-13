@@ -28,7 +28,7 @@ Test results with numba :
 # from numba import jit, njit
 # import numpy as np
 import math
-from typing import List
+# from typing import List
 
 from server.data import db, Planet, Player, Colony
 from server.sbc_parameters import *
@@ -45,7 +45,7 @@ def food_planet_factor(planet: Planet, player: Player):
     humidity_factor = max((planet.humidity + player.bio/2) / 100, 1)
     return temperature_factor * humidity_factor
 
-def meca_planet_factor(planet: Planet, player: Player):
+def parts_planet_factor(planet: Planet, player: Player):
     """ Compute the factor of MECHANICAL maintenance relative to planet environment and player attributes """
     temperature_factor = gauss_factor(planet.temperature, player.prefered_temperature, BASE_STD_TEMP + player.meca)
     humidity_factor = max((100-(planet.humidity + player.meca/2))/100, 1)
@@ -64,10 +64,60 @@ def food_production(colony: Colony):
     food_balance = food_created - food_maintenance
     return food_balance
 
-def meca_production(colony: Colony):
+def parts_production(colony: Colony):
     """ Compute spare-parts balance for a colony (owned by a player) """
     spare_parts_created = BASE_PRODUCTIVITY * colony.RO * math.exp(-colony.RO/POP_THRESHOLD)
-    spare_parts_maintenance = BASE_MAINTENANCE_RO * colony.RO * (1 - meca_planet_factor(colony.planet, colony.player))
+    spare_parts_maintenance = BASE_MAINTENANCE_RO * colony.RO * (1 - parts_planet_factor(colony.planet, colony.player))
     spare_parts_balance = spare_parts_created - spare_parts_maintenance
     return spare_parts_balance
 
+def find_max_food_production(planet: Planet, player: Player):
+    """
+    Compute the maximum hypothetique food production for a planet for a player
+    ATTENTION, copy of algorithm of food production (code duplication)
+
+    Strategy : perform a loop with incrementing WF, store the max net income
+    """
+    food_factor = food_planet_factor(planet, player)
+
+    # start condition
+    wf = 10
+    net_income = 0
+    max_income = 0
+
+    while net_income >= max_income:
+        max_income = net_income
+        wf += 10
+        food_created = food_factor * wf * (BASE_MAINTENANCE_WF + BASE_PRODUCTIVITY * math.exp(-wf/POP_THRESHOLD))
+        food_maintenance = BASE_MAINTENANCE_WF * wf
+        net_income = food_created - food_maintenance
+
+    max_wf = wf - 10
+
+    return max_income, max_wf
+
+
+def find_max_parts_production(planet: Planet, player: Player):
+    """
+    Compute the maximum hypothetique parts production for a planet for a player
+    ATTENTION, copy of algorithm of parts production (code duplication)
+
+    Strategy : perform a loop with incrementing RO, store the max net income
+    """
+    parts_factor = parts_planet_factor(planet, player)
+
+    # start condition
+    ro = 10
+    net_income = 0
+    max_income = 0
+
+    while net_income >= max_income:
+        max_income = net_income
+        ro += 10
+        spare_parts_created = BASE_PRODUCTIVITY * ro * math.exp(-ro / POP_THRESHOLD)
+        spare_parts_maintenance = BASE_MAINTENANCE_RO * ro * (1 - parts_factor)
+        net_income = spare_parts_created - spare_parts_maintenance
+
+    max_ro = ro - 10
+
+    return max_income, max_ro

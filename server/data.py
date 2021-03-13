@@ -48,6 +48,14 @@ class Case(p.Model):
     y = p.IntegerField()
     z = p.IntegerField()
 
+    def to_dict(self):
+        return {
+            "x": self.x,
+            "y": self.y,
+            "z": self.z
+
+        }
+
     class Meta:
         database = db  # This model uses the 'game.db' database
         indexes = (
@@ -108,6 +116,28 @@ class Colony(p.Model):
         )
         constraints = [p.SQL('UNIQUE ("name" COLLATE NOCASE)')]
 
+class Ship(p.Model):
+    player = p.ForeignKeyField(Player, backref="ships")
+    case = p.ForeignKeyField(Case, backref="ships")
+    type = p.CharField()
+    name = p.CharField()
+    size = p.IntegerField()
+
+    def to_dict(self):
+        return {
+            "type": self.type,
+            "name": self.name,
+            "size": self.size,
+            "position": self.case.to_dict(),
+        }
+
+    class Meta:
+        database = db  # This model uses the 'game.db' database
+        indexes = (
+            (("name", "player"), True),  # unique index sur name and player
+        )
+        constraints = [p.SQL('UNIQUE ("name" COLLATE NOCASE)')]
+
 def create_tables():
-    db.create_tables([Player, Tech, Case, Star, Planet, Colony])
+    db.create_tables([Player, Tech, Case, Star, Planet, Colony, Ship])
 

@@ -67,5 +67,5 @@ if __name__ == "__main__":
         start = time()
         play_one_turn("testing", game_folder)
         stop = time()
-        logger.debug(f"{LOG_LEVEL(1)}# Timing # Game engine running 1 turn in {(stop - start) * 1000:.1f} ms")
+        logger.debug(f"{LOG_LEVEL(1)}# Timing # Game engine running turn {turn_nb} in {(stop - start) * 1000:.1f} ms")
 

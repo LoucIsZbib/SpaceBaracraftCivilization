@@ -1,10 +1,15 @@
 from server.data import Player, Colony, Planet
 import server.data as data
-from server.production import food_planet_factor, meca_planet_factor
+from server.production import food_planet_factor, parts_planet_factor
 import server.production as prod
+from server.sbc_parameters import *
 
 import yaml
 import json
+import logging
+
+# logging
+logger = logging.getLogger("sbc")
 
 def generate_initial_reports(players):
     """
@@ -46,6 +51,7 @@ class Report:
         self.player_status = None
         self.colonies_status = None
         self.stars_visible = None
+        # TODO : get ships status
 
     def generate_status_report(self):
         self.turn = data.kv["game_turn"]
@@ -58,8 +64,9 @@ class Report:
         self.current_prod = []
         self.prod_status[colony_name] = self.current_prod
 
-    def record_prod(self, msg: str):
+    def record_prod(self, msg: str, log_level: int=0):
         self.current_prod.append(msg)
+        logger.debug(f"{LOG_LEVEL(log_level)}{msg}")
 
     def to_dict(self):
         return {
@@ -82,10 +89,12 @@ class Report:
         for colony in self.player.colonies:
             colony_status = colony.to_dict()
             colony_status["food_production"] = prod.food_production(colony)
-            colony_status["parts_production"] = prod.meca_production(colony)
+            colony_status["parts_production"] = prod.parts_production(colony)
             colony_status["planet"] = colony.planet.to_dict()
             colony_status["planet"]["food_factor"] = food_planet_factor(colony.planet, self.player)
-            colony_status["planet"]["meca_factor"] = meca_planet_factor(colony.planet, self.player)
+            colony_status["planet"]["meca_factor"] = parts_planet_factor(colony.planet, self.player)
+            colony_status["planet"]["max_food_prod"], colony_status["planet"]["max_wf"] = prod.find_max_food_production(colony.planet, self.player)
+            colony_status["planet"]["max_parts_prod"], colony_status["planet"]["max_ro"] = prod.find_max_parts_production(colony.planet, self.player)
 
             status.append(colony_status)
         return status

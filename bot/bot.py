@@ -1,4 +1,5 @@
-
+from bot.names import generate_name
+import random
 
 class Bot:
     def __init__(self, config: dict, game_folder: str):
@@ -18,21 +19,25 @@ class Bot:
         self.orders = [f"player {self.name}"]
 
         for colony in self.report["colonies_status"]:
-            available_food = int(colony["food"] + colony["food_production"])
-            WF_trained = int(available_food / 2 // 5)
-            food_selling = int(available_food - WF_trained * 5)
-
-            available_parts = int(colony["parts"] + colony["parts_production"])
-            RO_manufactured = int(available_parts / 2 // 5)
-            parts_selling = int(available_parts - RO_manufactured * 5)
-
             self.orders.append(f"PRODUCTION PL {colony['colony_name']}")
-            self.orders.append(f"BUILD {WF_trained} WF")
-            self.orders.append(f"SELL {food_selling} food")
-            self.orders.append(f"BUILD {RO_manufactured} RO")
-            self.orders.append(f"SELL {parts_selling} parts")
-            self.orders.append(f"RESEARCH {food_selling} BIO")
-            self.orders.append(f"RESEARCH {parts_selling} MECA")
+
+            available_food = int(colony["food"] + colony["food_production"])
+            if available_food > 100:
+                self.orders.append(f"BUILD 1 BF1 {generate_name()}-{random.randrange(1,99)}")
+            else:
+                WF_trained = int(available_food / 2 // 5)
+                food_selling = int(available_food - WF_trained * 5)
+
+                available_parts = int(colony["parts"] + colony["parts_production"])
+                RO_manufactured = int(available_parts / 2 // 5)
+                parts_selling = int(available_parts - RO_manufactured * 5)
+
+                self.orders.append(f"BUILD {WF_trained} WF")
+                self.orders.append(f"SELL {food_selling} food")
+                self.orders.append(f"BUILD {RO_manufactured} RO")
+                self.orders.append(f"SELL {parts_selling} parts")
+                self.orders.append(f"RESEARCH {food_selling} BIO")
+                self.orders.append(f"RESEARCH {parts_selling} MECA")
 
         self.orders.append(f"MOVEMENTS")
         self.orders.append(f"COMBAT")

@@ -10,7 +10,7 @@ import json
 
 import server.data as data
 from server.names import generate_name
-from server.production import food_planet_factor, meca_planet_factor
+from server.production import food_planet_factor, parts_planet_factor
 from server.report import generate_initial_reports, distribute_reports
 from server.sbc_parameters import *
 
@@ -248,5 +248,5 @@ def galaxy_status(player: data.Player):
         msg += f"{star.name:<10}  x: {star.case.x:>2} y: {star.case.y:>2} x: {star.case.z:>2}  nb_planets={len(star.planets)}" + "\n"
         planets = data.Planet.select().where(data.Planet.star == star)
         for planet in planets:
-            msg += f"   planet_nb: {planet.numero}  humidity= {planet.humidity:>6.2f}   temperature={planet.temperature:>7.1f}    atmosphere={planet.atmosphere:>7.3f}    food_factor={food_planet_factor(planet, player):>3.3f}    meca_factor={meca_planet_factor(planet, player):>3.3f}" + "\n"
+            msg += f"   planet_nb: {planet.numero}  humidity= {planet.humidity:>6.2f}   temperature={planet.temperature:>7.1f}    atmosphere={planet.atmosphere:>7.3f}    food_factor={food_planet_factor(planet, player):>3.3f}    meca_factor={parts_planet_factor(planet, player):>3.3f}" + "\n"
     return msg
