@@ -10,7 +10,7 @@ from server.movements import movement_phase
 from server.report import Report
 from server.report import distribute_reports
 from server.data import Player, db, kv
-from server.sbc_parameters import FOOD, PARTS, EU, LOG_LEVEL
+from server.sbc_parameters import *
 from server.research import upgrade_tech
 from server import data
 
@@ -162,7 +162,7 @@ class NewTurn:
     def movement_phase(self):
         pass
 
-    def check_if_ressources_are_available(self, qty: int, currency_type: str):
+    def check_if_ressources_are_available(self, qty: int, price: int, currency_type: str):
         """
         1- get max available from request
         2- Remove currency from stock/EU
@@ -173,54 +173,83 @@ class NewTurn:
         if qty < 0:
             qty = 0
 
-        available = 0
+        cost = qty * price
+
+        qty_available = 0       # How many items could be build/bought
+        cost_available = 0      # How much it will cost
         if currency_type == EU:
             # 1 - check availability
             # check in player EU first
-            if self.player.EU >= qty:
-                available = qty
+            if self.player.EU >= cost:
+                cost_available = cost
             else:
                 # TODO : we need to transform automatically EU from food or parts if not enough EU (?)
                 # Currently, we use all available
-                available = self.player.EU
-                self.report.record_prod(f"{qty} EU requested, {available} only available")
-                logger.debug(f"{LOG_LEVEL(5)}{qty} EU requested, {available} only available")
-
+                cost_available = (self.player.EU // price ) * price
+                self.report.record_prod(f"{cost} EU requested, {cost_available} only available")
+                logger.debug(f"{LOG_LEVEL(5)}{cost} EU requested, {cost_available} only available")
             # 2 - remove spend amount from EU
-            self.player.EU -= available
+            self.player.EU -= cost_available
+            qty_available = cost_available / price
 
         elif currency_type == FOOD:
             # 1 - check availability
-            if self.current_colony.food >= qty:
-                available = qty
+            if self.current_colony.food >= cost:
+                cost_available = cost
             else:
-                available = self.current_colony.food
-                self.report.record_prod(f"{qty} FOOD requested, {available} only available")
-                logger.debug(f"{LOG_LEVEL(5)}{qty} FOOD requested, {available} only available")
+                cost_available = (self.current_colony.food // price) * price
+                self.report.record_prod(f"{cost} FOOD requested, {cost_available} only available")
+                logger.debug(f"{LOG_LEVEL(5)}{cost} FOOD requested, {cost_available} only available")
             # 2 - remove spend amount from stock
-            self.current_colony.food -= available
+            self.current_colony.food -= cost_available
+            qty_available = cost_available / price
 
         elif currency_type == PARTS:
             # 1 - check availability
-            if self.current_colony.parts >= qty:
-                available = qty
+            if self.current_colony.parts >= cost:
+                cost_available = cost
             else:
-                available = self.current_colony.parts
-                self.report.record_prod(f"{qty} PARTS requested, {available} only available")
-                logger.debug(f"{LOG_LEVEL(5)}{qty} PARTS requested, {available} only available")
+                cost_available = (self.current_colony.parts // price ) * price
+                self.report.record_prod(f"{cost} PARTS requested, {cost_available} only available")
+                logger.debug(f"{LOG_LEVEL(5)}{cost} PARTS requested, {cost_available} only available")
             # 2 - remove spend amount from stock
-            self.current_colony.parts -= available
+            self.current_colony.parts -= cost_available
+            qty_available = cost_available / price
 
-        return available
+        return int(qty_available)
 
     def build(self, arguments: List[str]):
-        pass
+        """
+        arguments is a list that excludes the command "BUILD"
+        BUILD 10 WF --> ["10", "WF"]
+        BUILD 50 RO
+        """
+        qty_requested = int(arguments[0])
+        what = arguments[1]
+
+        if what == WF:
+            qty_available = self.check_if_ressources_are_available(qty_requested, COST_WF, FOOD)
+            cost = int(qty_available*COST_WF)
+            self.current_colony.WF += qty_available
+            self.report.record_prod(f"{qty_available} WF trained (cost={cost})")
+            logger.debug(f"{LOG_LEVEL(5)}{qty_available} WF trained (cost={cost})")
+
+        elif what == RO:
+            qty_available = self.check_if_ressources_are_available(qty_requested, COST_RO, PARTS)
+            cost = int(qty_available * COST_RO)
+            self.current_colony.RO += qty_available
+            self.report.record_prod(f"{qty_available} RO trained (cost={cost})")
+            logger.debug(f"{LOG_LEVEL(5)}{qty_available} RO trained (cost={cost})")
+
+        else:
+            # object unknown
+            raise Exception(f"build : unknown object {what}")
 
     def research(self, arguments: List[str]):
         qty = int(arguments[0])
         tech_str = arguments[1]
 
-        available = self.check_if_ressources_are_available(qty, EU)
+        available = self.check_if_ressources_are_available(qty, COST_RESEARCH, EU)
 
         level, gain = upgrade_tech(self.player, tech_str, available)
         self.report.record_prod(f"Research investissement of {available} : Tech {tech_str} level is now {level} (+{gain})")
@@ -230,7 +259,7 @@ class NewTurn:
         qty = int(arguments[0])
         what = arguments[1]
 
-        available = self.check_if_ressources_are_available(qty, what)
+        available = self.check_if_ressources_are_available(qty, SELL_TO_GET_EU, what)
 
         self.player.EU += available
         self.report.record_prod(f"Selling {qty} {what.upper()} for {qty} EU")

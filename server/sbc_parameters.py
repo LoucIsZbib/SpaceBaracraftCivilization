@@ -4,9 +4,13 @@ do not import anything here, because the following parameters are dirty imported
 from sbc_parameters import *
 """
 
+# naming of thing for comparison
+# /!\ should be lowercase !
 EU = "eu"           # name of the gobal virtual currency
 FOOD = "food"       # name of the BIOLOGICAL currency
 PARTS = "parts"     # name of the MECHANICAL currency
+WF = "wf"           # WF = working force, works in farms to generate food
+RO = "ro"           # RO = robots, works in factory to generate parts
 
 # === STANDARD GAME SETTINGS ===
 # Galaxy creation
@@ -40,6 +44,11 @@ POP_THRESHOLD = 2000                # Factor of max pop size in a colony
 BASE_MAINTENANCE_WF = 1             # base cost of maintenance for 1 WF
 BASE_MAINTENANCE_RO = 3             # base cost of maintenance for 1 WF or 1 RO
 BASE_PRODUCTIVITY = 2               # base food/spare-parts generation per WF or RO
+COST_WF = 5                         # cost for training 1 WF. Money is food
+COST_RO = 5                         # cost for manufacturing 1 RO. Money is part
+
+COST_RESEARCH = 1                   # basic cost for research : 1 EU gives 1 Research_points (+ random)
+SELL_TO_GET_EU = 1                  # change ratio when selling food or parts
 
 
 def LOG_LEVEL(level: int):
