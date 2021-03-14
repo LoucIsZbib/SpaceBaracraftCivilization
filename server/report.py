@@ -42,9 +42,10 @@ class Report:
     def __init__(self, player: Player):
         self.player = player
 
-        # initialisation for out of object manipulation
+        # initialisation
         self.prod_status = {}
         self.current_prod = None
+        self.mov_status = []
 
         # initialisation for pycharm check
         self.turn = None
@@ -64,8 +65,12 @@ class Report:
         self.current_prod = []
         self.prod_status[colony_name] = self.current_prod
 
-    def record_prod(self, msg: str, log_level: int=0):
+    def record_prod(self, msg: str, log_level: int = 0):
         self.current_prod.append(msg)
+        logger.debug(f"{LOG_LEVEL(log_level)}{msg}")
+
+    def record_mov(self, msg: str, log_level: int = 0):
+        self.mov_status.append(msg)
         logger.debug(f"{LOG_LEVEL(log_level)}{msg}")
 
     def to_dict(self):

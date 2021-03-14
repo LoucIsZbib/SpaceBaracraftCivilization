@@ -60,6 +60,7 @@ BIO_CARGO = "bc"
 MECA_FIGHTER = "mf"
 MECA_SCOUT = "ms"
 MECA_CARGO = "mc"
+JUMP_SAFE_DISTANCE = 5                   # base distance where jump should be fine
 
 def LOG_LEVEL(level: int):
     spacing = "   "

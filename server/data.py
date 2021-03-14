@@ -1,5 +1,7 @@
 import peewee as p
 from playhouse.kv import KeyValue
+from typing import List
+import math
 
 from server.names import generate_name
 
@@ -30,6 +32,10 @@ class Player(p.Model):
     def meca(self):
         return self.techs.where(Tech.tech == "meca").get().level
 
+    @property
+    def gv(self):
+        return self.techs.where(Tech.tech == "gv").get().level
+
     class Meta:
         database = db  # This model uses the 'game.db' database
         constraints = [p.SQL('UNIQUE ("name" COLLATE NOCASE)')]
@@ -55,6 +61,13 @@ class Case(p.Model):
             "z": self.z
 
         }
+
+    @staticmethod
+    def distance(a, b):
+        return math.sqrt(  (a.x - b.x) ** 2
+                         + (a.y - b.y) ** 2
+                         + (a.z - b.z) ** 2
+                         )
 
     class Meta:
         database = db  # This model uses the 'game.db' database
@@ -89,6 +102,17 @@ class Planet(p.Model):
         database = db  # This model uses the 'game.db' database
         indexes = (
             (("star", "numero"), True),  # unique index sur star and numero
+        )
+
+class PlanetNames(p.Model):
+    """ Each planet could be nammed differently by each player """
+    player = p.ForeignKeyField(Player, backref="planets_names")
+    planet = p.ForeignKeyField(Planet, backref="names")
+
+    class Meta:
+        database = db  # This model uses the 'game.db' database
+        indexes = (
+            (("player", "planet"), True),  # unique index sur star and numero
         )
 
 class Colony(p.Model):
@@ -130,6 +154,14 @@ class Ship(p.Model):
             "size": self.size,
             "position": self.case.to_dict(),
         }
+
+    @staticmethod
+    def parse_ship(arguments: List[str]):
+        full_type = arguments[0]
+        ship_size = int(full_type[2:])
+        ship_type = full_type[:2]
+        ship_name = arguments[1]
+        return ship_type, ship_size, ship_name
 
     class Meta:
         database = db  # This model uses the 'game.db' database

@@ -7,13 +7,13 @@ from time import time
 
 from server.orders import Orders
 import server.production as prod
-from server.movements import movement_phase
 from server.report import Report
 from server.report import distribute_reports
-from server.data import Player, db, kv
+from server.data import Player, db, kv, Ship, Case, Colony, Star, Planet, PlanetNames
 from server.sbc_parameters import *
 from server.research import upgrade_tech
 from server import data
+from server import movements
 
 # logging
 logger = logging.getLogger("sbc")
@@ -88,7 +88,12 @@ class NewTurn:
                 self.player.save()
 
     def movement_phase(self):
-        pass
+        with db.atomic():
+            # orders execution for this colony
+            for command in self.orders.move_cmd:
+                logger.debug(f"{LOG_LEVEL(5)}cmd: {command}")
+                action = NewTurn.assign_action(command[0])
+                action(self, command[1:])
 
     def check_if_ressources_are_available(self, qty: int, price: int, currency_type: str):
         """
@@ -169,10 +174,7 @@ class NewTurn:
 
         # Build new Ship
         elif any(ship_type in what for ship_type in [BIO_FIGHTER, BIO_SCOUT, BIO_CARGO, MECA_FIGHTER, MECA_SCOUT, MECA_CARGO]):
-            ship_name = arguments[2]
-            ship_size = int(what[2:])
-            ship_type = what[:2]
-
+            ship_type, ship_size, ship_name = Ship.parse_ship(arguments[1:])
             self.create_ships(ship_type, ship_size, ship_name)
 
         else:
@@ -241,6 +243,44 @@ class NewTurn:
         self.player.EU += available
         self.report.record_prod(f"Selling {qty} {what.upper()} for {qty} EU", 5)
 
-    def jump(self):
-        pass
+    def jump(self, arguments: List[str]):
+        """
+        2 formalism accepted :
+            JUMP BF2 Firefly X Y Z
+            JUMP BF2 Firefly PL Earth
+        """
 
+        # Ship concerned
+        ship_type, ship_size, ship_name = Ship.parse_ship(arguments[:2])
+        ship = Ship.select().join(Player).where(Ship.player == self.player, Ship.name == ship_name)
+
+        # Destination concerned
+        destination = arguments[2:]
+        if destination[0].isnumeric():
+            # we try to jump to X Y Z coords
+            # destination = ["10", "8", "12"]
+            x = int(destination[0])
+            y = int(destination[1])
+            z = int(destination[2])
+
+            # Retrieve corresponding case
+            case = data.Case.get_or_create(x=x, y=y, z=z)
+
+            jump_success = movements.jump(self.player, ship, case)
+
+        else:
+            # destination formalism is 'PL Earth'
+            # destination = ["PL", "Earth"]
+            planet_name = destination[1]
+
+            # retrieve the case where is the planet according to the naming of this player
+            case = Case.select().join(Star).join(Planet).join(PlanetNames).join(Player).where(
+                PlanetNames.player == self.player,
+            )
+
+            jump_success = movements.jump(self.player, ship, case)
+
+        if jump_success:
+            self.report.record_mov(f"{ship_type}{ship_size} {ship_name} successfully jumped to {destination}")
+        else:
+            self.report.record_mov(f"{ship_type}{ship_size} {ship_name} failed to jump to {destination}")

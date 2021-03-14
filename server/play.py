@@ -7,7 +7,6 @@ from time import time
 
 from server.orders import Orders
 import server.production as prod
-from server.movements import movement_phase
 from server.report import Report
 from server.report import distribute_reports
 from server.data import Player, db, kv
@@ -82,10 +81,13 @@ def play_one_turn(game_name: str, tmp_folder: str):
     for new_turn in new_turns:
         new_turn.report.generate_status_report()
         reports[new_turn.player] = new_turn.report
+    stop = time()
+    logger.debug(f"{LOG_LEVEL(2)}# Timing # Reports creation in {(stop - start) * 1000:.1f} ms")
 
     # send reports to players
     logger.debug(f"{LOG_LEVEL(2)}Report distribution")
+    start = time()
     distribute_reports(reports, tmp_folder, channel="file-yaml")  # DEBUG
     stop = time()
-    logger.debug(f"{LOG_LEVEL(2)}# Timing # Reports creation and distribution in {(stop - start) * 1000:.1f} ms")
+    logger.debug(f"{LOG_LEVEL(2)}# Timing # Reports distribution in {(stop - start) * 1000:.1f} ms")
 
