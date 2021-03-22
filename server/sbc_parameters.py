@@ -24,6 +24,7 @@ MIN_PLANET_SIZE = 500               # see wiki for planet size and influence on 
 START_PLANET_SIZE = 3000            # size of initial planet, same for all players
 PLAYER_START_POINTS = 20            # number of points to share between BIO and MECA for new player
 COLONY_START_POP = 100              # size of population on first colony
+GV_START_LEVEL = 5                  # start level for GV
 
 # Biome characteristics
 BIO_START_TEMP = 25                 # start temperature for biological player           -- initial 25
@@ -61,6 +62,10 @@ MECA_FIGHTER = "mf"
 MECA_SCOUT = "ms"
 MECA_CARGO = "mc"
 JUMP_SAFE_DISTANCE = 5                   # base distance where jump should be fine
+
+# Gravitics specs
+VISIBILITY_RANGE = 5                # by default, each player only sees star within the visibility range from its positions (colonies, ships)
+
 
 def LOG_LEVEL(level: int):
     spacing = "   "

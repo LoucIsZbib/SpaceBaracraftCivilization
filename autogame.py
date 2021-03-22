@@ -6,12 +6,19 @@ import random
 import string
 import os
 import yaml
+import json
 import logging
 from time import time
 
 def get_report(player_name: str, working_folder: str, turn: int):
-    with open(f"{working_folder}/report.{player_name}.T{turn}.YML", "r", encoding='utf-8') as f:
-        report = yaml.safe_load(f)
+    # JSON
+    with open(f"{working_folder}/report.{player_name}.T{turn}.JSON", "r", encoding='utf-8') as f:
+        report = json.load(f)
+
+    # YAML
+    # with open(f"{working_folder}/report.{player_name}.T{turn}.YML", "r", encoding='utf-8') as f:
+    #     report = yaml.safe_load(f)
+
     return report
 
 
@@ -29,6 +36,7 @@ if __name__ == "__main__":
     game_folder = '/dev/shm/sbc-' + ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6))
     logger.info(f"{LOG_LEVEL(0)}Temporary folder for this game will be {game_folder}")
     os.makedirs(game_folder, exist_ok=True)
+    os.makedirs(f"{game_folder}/orders/archive")
 
     # init server
     start = time()

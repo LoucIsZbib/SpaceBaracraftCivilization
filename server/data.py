@@ -18,6 +18,10 @@ def use_db(path_to_db: str = "game", testing: bool = False):
 
     kv = KeyValue(database=db, table_name="keyvalue")
 
+def create_tables():
+    db.create_tables([Player, Tech, Case, Star, Planet, PlanetNames, Colony, Ship])
+
+
 class Player(p.Model):
     name = p.CharField()
     email = p.CharField()
@@ -79,6 +83,11 @@ class Star(p.Model):
     case = p.ForeignKeyField(Case, backref='star')
     name = p.CharField()
 
+    def to_dict(self):
+        return {"name": self.name,
+                "position": self.case.to_dict(),
+                }
+
     class Meta:
         database = db  # This model uses the 'game.db' database
         constraints = [p.SQL('UNIQUE ("name" COLLATE NOCASE)')]
@@ -98,6 +107,12 @@ class Planet(p.Model):
             "temperature": self.temperature,
         }
 
+    def localisation_to_dict(self):
+        return {
+            "star": self.star.to_dict(),
+            "numero": self.numero
+        }
+
     class Meta:
         database = db  # This model uses the 'game.db' database
         indexes = (
@@ -113,6 +128,16 @@ class PlanetNames(p.Model):
         database = db  # This model uses the 'game.db' database
         indexes = (
             (("player", "planet"), True),  # unique index sur star and numero
+        )
+
+class StarVisited(p.Model):
+    star = p.ForeignKeyField(Star, backref="visited")
+    player = p.ForeignKeyField(Player, backref="star_visited")
+
+    class Meta:
+        database = db  # This model uses the 'game.db' database
+        indexes = (
+            (("player", "star"), True),  # unique index sur star and numero
         )
 
 class Colony(p.Model):
@@ -149,6 +174,7 @@ class Ship(p.Model):
 
     def to_dict(self):
         return {
+            "owner_name": self.player.name,
             "type": self.type,
             "name": self.name,
             "size": self.size,
@@ -169,7 +195,4 @@ class Ship(p.Model):
             (("name", "player"), True),  # unique index sur name and player
         )
         constraints = [p.SQL('UNIQUE ("name" COLLATE NOCASE)')]
-
-def create_tables():
-    db.create_tables([Player, Tech, Case, Star, Planet, Colony, Ship])
 

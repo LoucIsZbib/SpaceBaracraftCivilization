@@ -24,6 +24,7 @@ def newgame(game_name: str, tmp_folder: str, config):
 
     # Creating folders
     os.makedirs(tmp_folder + "/orders", exist_ok=True)
+    os.makedirs(tmp_folder + "/orders/archive", exist_ok=True)
 
     # Database selection
     db_name = tmp_folder + '/' + game_name + '.db'
@@ -51,7 +52,8 @@ def newgame(game_name: str, tmp_folder: str, config):
     reports = generate_initial_reports(players)
 
     # send reports to players
-    distribute_reports(reports, tmp_folder, channel="file-yaml")  # DEBUG
+    # distribute_reports(reports, tmp_folder, channel="file-yaml")  # DEBUG
+    distribute_reports(reports, tmp_folder, channel="file-json")  # DEBUG
 
 
 def make_homes(players, galaxy_radius):
@@ -117,6 +119,7 @@ def create_player(config):
                 f"player BIO and MECA levels are incorrects : BIO({bio}) + MECA({meca}) != start_points({PLAYER_START_POINTS})")
         tech.append({"player": player, "tech": "bio", "level": bio})
         tech.append({"player": player, "tech": "meca", "level": meca})
+        tech.append({"player": player, "tech": "gv", "level": meca})
     data.Tech.insert_many(tech).execute()
 
     return players

@@ -47,6 +47,8 @@ def play_one_turn(game_name: str, tmp_folder: str):
         orders = Orders(dirpath + "/" + file)
         player = Player.get(fn.LOWER(Player.name) == orders.player_name)
         new_turns.append(NewTurn(player, orders))
+        # archive orders files
+        os.rename(f"{dirpath}/{file}", f"{dirpath}/archive/{file}")
     stop = time()
     logger.debug(f"{LOG_LEVEL(2)}# Timing # orders retrieving and parsing in {(stop - start) * 1000:.1f} ms")
 
@@ -66,6 +68,9 @@ def play_one_turn(game_name: str, tmp_folder: str):
         new_turn.movement_phase()
     stop = time()
     logger.debug(f"{LOG_LEVEL(2)}# Timing # Movement phase in {(stop - start) * 1000:.1f} ms")
+
+    # update visibility
+    # TODO : implement planet / colony discovery and update db
 
     # Combat phase - everyone together
     # TODO : implement combat system
@@ -87,7 +92,8 @@ def play_one_turn(game_name: str, tmp_folder: str):
     # send reports to players
     logger.debug(f"{LOG_LEVEL(2)}Report distribution")
     start = time()
-    distribute_reports(reports, tmp_folder, channel="file-yaml")  # DEBUG
+    # distribute_reports(reports, tmp_folder, channel="file-yaml")  # DEBUG
+    distribute_reports(reports, tmp_folder, channel="file-json")  # DEBUG
     stop = time()
     logger.debug(f"{LOG_LEVEL(2)}# Timing # Reports distribution in {(stop - start) * 1000:.1f} ms")
 
