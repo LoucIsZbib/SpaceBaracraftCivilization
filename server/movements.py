@@ -12,7 +12,7 @@ logger = logging.getLogger("sbc")
 
 def jump(player: Player, ship: Ship, destination: Case):
     """ success_chance is in % """
-    distance = Ship.distance(ship.case, destination)
+    distance = Case.distance(ship.case, destination)
 
     success_chance = math.exp(-distance / (JUMP_SAFE_DISTANCE + player.gv))
     lottery = random.uniform(0, 100)

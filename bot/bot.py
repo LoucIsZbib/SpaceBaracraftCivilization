@@ -49,7 +49,7 @@ class Bot:
                            )
                 self.planets.append(p)
 
-        # # parsing players
+        # parsing players
         self.me = Player(self.name)
         self.me.EU = report["player_status"]["EU"]
         self.me.tech = Technologies(report["player_status"]["technologies"]["bio"],
@@ -95,17 +95,18 @@ class Bot:
         self.orders = [f"player {self.name}"]
 
         # PRODUCTION
-        for colony in self.report["colonies_status"]:
-            self.orders.append(f"PRODUCTION PL {colony['colony_name']}")
+        for colony in self.me.colonies:
+            self.orders.append(f"PRODUCTION PL {colony.name}")
 
-            available_food = int(colony["food"] + colony["food_production"])
-            if available_food > 100:
+            available_food = colony.food + colony.food_production
+            if available_food > 100 and len(self.me.ships) < 2:
                 self.orders.append(f"BUILD 1 BF1 {generate_name()}-{random.randrange(1,99)}")
             else:
+                # the half of production to develop WF/RO for production
                 WF_trained = int(available_food / 2 // 5)
                 food_selling = int(available_food - WF_trained * 5)
 
-                available_parts = int(colony["parts"] + colony["parts_production"])
+                available_parts = int(colony.parts + colony.parts_production)
                 RO_manufactured = int(available_parts / 2 // 5)
                 parts_selling = int(available_parts - RO_manufactured * 5)
 
@@ -118,6 +119,11 @@ class Bot:
 
         # MOVEMENTS
         self.orders.append(f"MOVEMENTS")
+        for ship in self.me.ships:
+            x = ship.position.x + 1
+            y = ship.position.y + 1
+            z = ship.position.z + 1
+            self.orders.append(f"JUMP {ship.type}{ship.size} {ship.name} {x} {y} {z}")
 
         # COMBAT
         self.orders.append(f"COMBAT")

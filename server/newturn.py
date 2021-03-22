@@ -249,10 +249,12 @@ class NewTurn:
             JUMP BF2 Firefly X Y Z
             JUMP BF2 Firefly PL Earth
         """
+        # TODO : check if arguments are as expected
+        # for example BF instead of BF1
 
         # Ship concerned
         ship_type, ship_size, ship_name = Ship.parse_ship(arguments[:2])
-        ship = Ship.select().join(Player).where(Ship.player == self.player, Ship.name == ship_name)
+        ship = Ship.select().join(Player).where(Ship.player == self.player, Ship.name == ship_name).get()
 
         # Destination concerned
         destination = arguments[2:]
