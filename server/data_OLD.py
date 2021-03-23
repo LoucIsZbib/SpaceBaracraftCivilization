@@ -5,82 +5,53 @@ import math
 
 from server.names import generate_name
 
+db = p.SqliteDatabase(None, autoconnect=True)
 
-from dataclasses import dataclass
+kv = None
 
-class GameData:
-    """
-    Global container for game memory
-    """
-    _instance = None
+def use_db(path_to_db: str = "game", testing: bool = False):
+    global kv
+    if testing:
+        db.init(':memory:')
+    else:
+        db.init(f"{path_to_db}")
 
-    def __new__(cls, *args, **kwargs):
-        """ Singleton """
-        if cls._instance:
-            return cls._instance
-        else:
-            instance = object.__new__(cls)
+    kv = KeyValue(database=db, table_name="keyvalue")
 
-            # initialisation
-            instance.turn = 0
-            instance.players = {}
-            instance.positions = {}
-            instance.stars = {}
-            instance.planets = {}
-            instance.colonies = {}
-            instance.ships = {}
-
-            cls._instance = instance
-            return instance
-
-@dataclass
-class Technologies:
-    bio: int
-    meca: int
-    gv: int
-
-class Player:
-    """ Fabrique pour éviter les doublons """
-    players = {}
-
-    def __new__(cls, *args, **kwargs):
-        """
-        Possible :
-            Player("GLadOS")
-            Player(name="GLadOS", email="abc@example.com", prefered_temperature=40)
-        """
-        if args:
-            name = args[0]
-        elif kwargs:
-            name = kwargs["name"]
-            email = kwargs["email"]
-            prefered_temperature = kwargs["prefered_temperature"]
-        else:
-            raise Exception("Error Player_object creation: no *args, no **kwargs")
-
-        # check for unicity
-        if name in cls.players:
-            return cls.players[name]
-        else:
-            # this player doesn't exist, creating instance
-            instance = object.__new__(cls)
-
-            # initialisation
-            if "email" not in locals() or "prefered_temperature" not in locals():
-                raise Exception("Player creation : email, prefered_temperature needed !")
-            instance.techs = Technologies(bio=10, meca=10, gv=5)        # TODO : gérer l'initialisation des techs selon les choix du joueur ?
-            instance.email = email
-            instance.prefered_temperature = prefered_temperature
-            instance.EU = 0
-
-            cls.players[name] = instance
-            return instance
+def create_tables():
+    db.create_tables([Player, Tech, Case, Star, Planet, PlanetNames, Colony, Ship])
 
 
+class Player(p.Model):
+    name = p.CharField()
+    email = p.CharField()
+    EU = p.IntegerField(default=0)
+    prefered_temperature = p.IntegerField()
 
+    @property
+    def bio(self):
+        return self.techs.where(Tech.tech == "bio").get().level
 
+    @property
+    def meca(self):
+        return self.techs.where(Tech.tech == "meca").get().level
 
+    @property
+    def gv(self):
+        return self.techs.where(Tech.tech == "gv").get().level
 
+    class Meta:
+        database = db  # This model uses the 'game.db' database
+        constraints = [p.SQL('UNIQUE ("name" COLLATE NOCASE)')]
+
+class Tech(p.Model):
+    player = p.ForeignKeyField(Player, backref="techs")
+    tech = p.CharField()
+    level = p.IntegerField()
+    progression = p.IntegerField(default=0)
+
+    class Meta:
+        database = db  # This model uses the 'game.db' database
 
 class Case(p.Model):
     x = p.IntegerField()
