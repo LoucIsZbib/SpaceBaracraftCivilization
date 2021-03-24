@@ -6,7 +6,7 @@ Contrairement au moteur de jeu, le stockage n'est pas via une bdd
 class Position:
     """
     Fabrique :
-    Si une case avec les coords (x, y, z) existe déjà, renvoie cette case
+    Si une position avec les coords (x, y, z) existe déjà, renvoie cette position
     Sinon en crée une nouvelle et l'enregistre
     """
     positions = {}
@@ -15,10 +15,10 @@ class Position:
         """ x, y, z are like the unique index of an SQL table, other parameters have to be added later """
         coords = (x, y, z)
         if coords in cls.positions:
-            # a case at theses coords already exists
+            # a position at theses coords already exists
             return cls.positions[coords]
         else:
-            # no case exists, need to be created first
+            # no position exists, need to be created first
             instance = object.__new__(cls)
             cls.positions[coords] = instance
             instance.x = x

@@ -28,7 +28,7 @@ def generate_initial_reports(players):
         reports[player] = report
     return reports
 
-def distribute_reports(reports: dict, tmp_folder: str, channel: str):
+def distribute_reports(reports: dict, tmp_folder: str, channel: str = "file-json"):
     """ distribute the report, needs a channel :
         - file-json
         - file-yaml

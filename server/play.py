@@ -9,7 +9,7 @@ from server.orders import Orders
 import server.production as prod
 from server.report import Report
 from server.report import distribute_reports
-from server.data import Player, db, kv
+from server.data import Player, GameData
 from server.sbc_parameters import *
 from server.research import upgrade_tech
 from server import data
@@ -33,7 +33,7 @@ def play_one_turn(game_name: str, tmp_folder: str):
     """
     logger.info(f"{LOG_LEVEL(1)}-- Game engine running for a new turn --")
     # new turn
-    data.kv["game_turn"] += 1
+    GameData().turn += 1
 
     # retrieving orders
     start = time()
@@ -45,7 +45,7 @@ def play_one_turn(game_name: str, tmp_folder: str):
     new_turns = []
     for file in orders_files:
         orders = Orders(dirpath + "/" + file)
-        player = Player.get(fn.LOWER(Player.name) == orders.player_name)
+        player = Player(orders.player_name)
         new_turns.append(NewTurn(player, orders))
         # archive orders files
         os.rename(f"{dirpath}/{file}", f"{dirpath}/archive/{file}")

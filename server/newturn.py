@@ -9,7 +9,7 @@ from server.orders import Orders
 import server.production as prod
 from server.report import Report
 from server.report import distribute_reports
-from server.data import Player, db, kv, Ship, Case, Colony, Star, Planet, PlanetNames
+from server.data import Player, GameData, Ship, Position, Colony, Star, Planet
 from server.sbc_parameters import *
 from server.research import upgrade_tech
 from server import data
@@ -265,7 +265,7 @@ class NewTurn:
             y = int(destination[1])
             z = int(destination[2])
 
-            # Retrieve corresponding case
+            # Retrieve corresponding position
             case = data.Case.get_or_create(x=x, y=y, z=z)
 
             jump_success = movements.jump(self.player, ship, case)
@@ -275,7 +275,7 @@ class NewTurn:
             # destination = ["PL", "Earth"]
             planet_name = destination[1]
 
-            # retrieve the case where is the planet according to the naming of this player
+            # retrieve the position where is the planet according to the naming of this player
             case = Case.select().join(Star).join(Planet).join(PlanetNames).join(Player).where(
                 PlanetNames.player == self.player,
             )
