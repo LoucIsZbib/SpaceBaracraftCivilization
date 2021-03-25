@@ -1,4 +1,4 @@
-from server.data import Player, Colony, Planet
+from server.data import Player, Colony, Planet, GameData, Ship, Star
 import server.data as data
 from server.production import food_planet_factor, parts_planet_factor
 import server.production as prod
@@ -59,7 +59,7 @@ class Report:
         self.ships_status = None
 
     def generate_status_report(self):
-        self.turn = data.kv["game_turn"]
+        self.turn = GameData().turn
 
         self.player_status = self.evaluate_player_status()
         self.colonies_status = self.evaluate_colonies_status()
@@ -90,8 +90,8 @@ class Report:
     def evaluate_ship_status(self):
         # TODO : restrain to visible ships
         status = []
-        all_ships = data.Ship.select()
-        for ship in all_ships:
+        all_ships = Ship.ships
+        for ship in all_ships.values():
             status.append(ship.to_dict())
         return status
 
@@ -99,9 +99,9 @@ class Report:
         return {
             "EU": self.player.EU,
             "technologies":
-                {"bio": self.player.bio,
-                 "meca": self.player.meca,
-                 "gv": self.player.gv
+                {"bio": self.player.techs["bio"].level,
+                 "meca": self.player.techs["meca"].level,
+                 "gv": self.player.techs["gv"].level
                  }
         }
 
@@ -109,7 +109,7 @@ class Report:
         status = []
         for colony in self.player.colonies:
             colony_status = colony.to_dict()
-            colony_status["food_production"] = prod.food_production(colony)
+            colony_status["food_production"] = prod.food_production(colony)     # TODO : cache this information to avoid computing ?
             colony_status["parts_production"] = prod.parts_production(colony)
             colony_status["planet"] = colony.planet.localisation_to_dict()
             # colony_status["planet"]["food_factor"] = food_planet_factor(colony.planet, self.player)
@@ -134,7 +134,7 @@ class Report:
             # export visible planets
             # TODO : retrain to only visited star system
             star_dict["planets"] = []
-            for planet in star.planets:
+            for planet in star.planets.values():
                 planet_dict = planet.to_dict()
                 planet_dict["food_factor"] = food_planet_factor(planet, self.player)
                 planet_dict["meca_factor"] = parts_planet_factor(planet, self.player)
@@ -152,31 +152,21 @@ class Report:
         """
         coords_where_I_am = set()
         # positions of my colonies
-        colonies_cases = (data.Case.select().join(data.Star).join(data.Planet).join(Colony)
-                          .where(data.Colony.player == self.player)
-                          .where(data.Planet.id == data.Colony.planet)
-                          .where(data.Star.id == data.Planet.star)
-                          .where(data.Case.id == data.Star.case)
-                          .group_by(data.Case)
-                          )
+        colonies_positions = [colony.planet.star.position for colony in self.player.colonies]
 
         # positions of my ships
-        ships_cases = (data.Case.select().join(data.Ship)
-                       .where(data.Ship.player == self.player)
-                       .group_by(data.Case)
-                       )
-        for case in colonies_cases:
-            coords_where_I_am.add((case.x, case.y, case.z))
-        for case in ships_cases:
-            coords_where_I_am.add((case.x, case.y, case.z))
+        ships_positions = [ship.position for ship in self.player.ships]
+
+        for position in colonies_positions:
+            coords_where_I_am.add((position.x, position.y, position.z))
+        for position in ships_positions:
+            coords_where_I_am.add((position.x, position.y, position.z))
 
         # get star within the visibility range
-        all_stars = list(
-            data.Star.select(data.Case.x, data.Case.y, data.Case.z, data.Star).join(data.Case)
-        )
-        all_stars_coords = [[star.case.x, star.case.y, star.case.z] for star in all_stars]
+        all_stars_dict = Star.stars
+        all_stars_coords = [[star.position.x, star.position.y, star.position.z] for star in all_stars_dict.values()]
 
-        # calculate distances
+        # calculate distances           TODO : is it usefull to cache something here ?
         array_me = np.array([[x, y, z] for x, y, z in coords_where_I_am])
         array_stars = np.array(all_stars_coords)
         distances = cdist(array_me, array_stars, "euclidean")
@@ -185,10 +175,10 @@ class Report:
         # visible_matrix = np.where(distances < VISIBILITY_RANGE)[1]  # problem, gives us 2D array becasue input is 2D
         visible_matrix = np.flatnonzero(distances < VISIBILITY_RANGE)  # same as previous, but in 1D
 
-        # retrieve list of visible Case
+        # retrieve list of visible position
         visible_stars = set()
         for i in visible_matrix:
-            visible_stars.add(all_stars[i])
+            visible_stars.add(list(all_stars_dict.values())[i])
 
         return visible_stars
 

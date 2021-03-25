@@ -24,12 +24,12 @@ class GameData:
 
             # initialisation
             instance.turn = 0
-            instance.players = {}
-            instance.positions = {}
-            instance.stars = {}
-            instance.planets = {}
-            instance.colonies = {}
-            instance.ships = {}
+            # instance.players = {}      # Not necessary, info present within class
+            # instance.positions = {}
+            # instance.stars = {}
+            # instance.planets = {}
+            # instance.colonies = {}
+            # instance.ships = {}
 
             cls._instance = instance
             return instance
@@ -95,14 +95,16 @@ class Player:
             assert prefered_temperature
 
             # store init data
+            instance.name = name
             instance.techs = {}       # init technologies by the dedicated method in newgame.py
             instance.email = email
             instance.prefered_temperature = prefered_temperature
             instance.EU = 0
+            instance.colonies = []
+            instance.ships = []
 
             cls.players[lower_name] = instance
             return instance
-
 
 class Position:
     """ Fabrique pour éviter les doublons """
@@ -162,7 +164,6 @@ class Position:
             "y": self.y,
             "z": self.z,
         }
-
 
 class Star:
     """ Fabrique pour éviter les doublons """
@@ -225,7 +226,6 @@ class Star:
             "position": self.position.to_dict()
         }
 
-
 class Planet:
     """ Fabrique pour éviter les doublons """
     planets = {}
@@ -234,6 +234,8 @@ class Planet:
 
     def __new__(cls, *args, **kwargs):
         """
+        unique key is (star, numero)
+
         Possible
             Planet(star, numero)
             Planet(star=star_object,
@@ -287,6 +289,11 @@ class Planet:
             'humidity': self.humidity
         }
 
+    def localisation_to_dict(self):
+        return {
+            "star": self.star.to_dict(),
+            "numero": self.numero
+        }
 
 class Colony:
     """ Fabrique pour éviter les doublons """
@@ -296,6 +303,8 @@ class Colony:
 
     def __new__(cls, *args, **kwargs):
         """
+            unique key is 'planet_object'
+
             Possible
                 Colony(planet_object)           # only to get, not to create
                 Colony( planet=planet_object,
@@ -335,6 +344,9 @@ class Colony:
             instance.food = 0               # in stockpile
             instance.parts = 0              # in stockpile
 
+            # backref
+            player.colonies.append(instance)
+
             cls.colonies[planet] = instance
             return instance
 
@@ -349,6 +361,10 @@ class Colony:
             "parts": self.parts
         }
 
+    def delete(self):
+        # remove backrefs
+        self.player.colonies.remove(self)
+
 class Ship:
     """ Fabrique pour éviter les doublons """
     ships = {}
@@ -357,6 +373,8 @@ class Ship:
 
     def __new__(cls, *args, **kwargs):
         """
+            unique key is (ship_name, player)
+
             Possible
                 Ship(ship_name, player_object)
                 Ship( name=ship_name,
@@ -394,6 +412,8 @@ class Ship:
             assert isinstance(position, Position)
 
             # storing init values
+            instance.name = name
+            instance.player = player
             instance.type = ship_type
             instance.size = size
             instance._position = None
@@ -401,6 +421,7 @@ class Ship:
 
             # backrefs
             # position backref is handled by property because it can change during game
+            player.ships.append(instance)
 
             cls.ships[index] = instance
             return instance
@@ -436,3 +457,4 @@ class Ship:
     def delete(self):
         # removing backref
         self._position.ships.remove(self)
+        self.player.ships.remove(self)

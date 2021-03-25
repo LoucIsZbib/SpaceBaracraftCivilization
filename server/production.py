@@ -42,14 +42,14 @@ logger = logging.getLogger("sbc")
 
 def food_planet_factor(planet: Planet, player: Player):
     """ Compute the factor of BIOLOGICAL productivity relative to planet environment and player attributes """
-    temperature_factor = gauss_factor(planet.temperature, player.prefered_temperature, BASE_STD_TEMP + player.techs["bio"])
-    humidity_factor = max((planet.humidity + player.techs["bio"]/2) / 100, 1)
+    temperature_factor = gauss_factor(planet.temperature, player.prefered_temperature, BASE_STD_TEMP + player.techs["bio"].level)
+    humidity_factor = max((planet.humidity + player.techs["bio"].level/2) / 100, 1)
     return temperature_factor * humidity_factor
 
 def parts_planet_factor(planet: Planet, player: Player):
     """ Compute the factor of MECHANICAL maintenance relative to planet environment and player attributes """
-    temperature_factor = gauss_factor(planet.temperature, player.prefered_temperature, BASE_STD_TEMP + player.techs["meca"])
-    humidity_factor = max((100-(planet.humidity + player.techs["meca"]/2))/100, 1)
+    temperature_factor = gauss_factor(planet.temperature, player.prefered_temperature, BASE_STD_TEMP + player.techs["meca"].level)
+    humidity_factor = max((100-(planet.humidity + player.techs["meca"].level/2))/100, 1)
     return temperature_factor * humidity_factor
 
 def gauss(x: float, moy: float, std: float):

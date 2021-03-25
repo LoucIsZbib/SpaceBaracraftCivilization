@@ -72,7 +72,7 @@ def create_player(config):
 
     logger.info(f"{LOG_LEVEL(2)}-- Creating {len(Player.players)} Players")
 
-    return Player.players
+    return Player.players.values()
 
 def create_galaxy(nb_of_player: int,
                   player_density: int = STAR_DENSITY_PER_PLAYER,
@@ -208,7 +208,7 @@ def make_homes(galaxy_radius):
         Also create a first colony
      """
     logger.info(f"{LOG_LEVEL(2)}-- Making homes --")
-    for player in Player.players:
+    for player in Player.players.values():
         # generate new star
         position = None
         has_been_created = False
@@ -232,7 +232,7 @@ def make_homes(galaxy_radius):
             if i == home_planet_nb:
                 humidity, temperature, atmosphere, size = generate_custom_planet(50, player.prefered_temperature, START_PLANET_SIZE)
             elif i == second_planet:
-                humidity, temperature, atmosphere, size = generate_custom_planet(player.bio * 100/PLAYER_START_POINTS, player.prefered_temperature, int(START_PLANET_SIZE * 1.5))
+                humidity, temperature, atmosphere, size = generate_custom_planet(player.techs["bio"].level * 100/PLAYER_START_POINTS, player.prefered_temperature, int(START_PLANET_SIZE * 1.5))
             else:
                 humidity, temperature, atmosphere, size = generate_planet(i)
 
@@ -244,8 +244,8 @@ def make_homes(galaxy_radius):
 
         # make home colony
         # adjust pop size between bio and meca
-        working_force = int(COLONY_START_POP * player.bio / PLAYER_START_POINTS)
-        robots = int(COLONY_START_POP * player.meca / PLAYER_START_POINTS)
+        working_force = int(COLONY_START_POP * player.techs["bio"].level / PLAYER_START_POINTS)
+        robots = int(COLONY_START_POP * player.techs["meca"].level / PLAYER_START_POINTS)
         home_planet = star.planets[home_planet_nb]
         Colony(planet=home_planet,
                player=player,

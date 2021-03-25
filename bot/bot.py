@@ -65,7 +65,7 @@ class Bot:
                                             colony_status["planet"]["star"]["position"]["z"]),
                                    colony_status["planet"]["numero"]
                                    ),
-                            name=colony_status["colony_name"],
+                            # name=colony_status["colony_name"],    # TODO : handle Colony's name
                             RO=colony_status["RO"],
                             WF=colony_status["WF"],
                             food=colony_status["food"],
