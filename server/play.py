@@ -69,9 +69,6 @@ def play_one_turn(game_name: str, tmp_folder: str):
     stop = time()
     logger.debug(f"{LOG_LEVEL(2)}# Timing # Movement phase in {(stop - start) * 1000:.1f} ms")
 
-    # update visibility
-    # TODO : implement planet / colony discovery and update db
-
     # Combat phase - everyone together
     # TODO : implement combat system
     logger.debug(f"{LOG_LEVEL(2)}Combat phase")

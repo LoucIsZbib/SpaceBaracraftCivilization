@@ -35,7 +35,7 @@ class NewTurn:
 
         # --  PARSING ACTION FROM STRING --
         action = None
-        cmd = command[0]
+        cmd = command[0].lower()
 
         # Production
         if cmd == "build":
@@ -49,7 +49,7 @@ class NewTurn:
         elif cmd == "jump":
             action = NewTurn.jump
         elif cmd == "name":
-            action = NewTurn.aassign_name
+            action = NewTurn.assign_name
 
         # Combat
         elif cmd == "attack":
@@ -154,7 +154,7 @@ class NewTurn:
         BUILD 1 CH2 FireFly
         """
         qty_requested = int(arguments[0])
-        what = arguments[1]
+        what = arguments[1].lower()
 
         # Train new WF
         if what == sbc.WF:
@@ -267,7 +267,7 @@ class NewTurn:
 
     def research(self, arguments: List[str]):
         qty = int(arguments[0])
-        tech_str = arguments[1]
+        tech_str = arguments[1].lower()
 
         available = self.check_if_ressources_are_available(qty, COST_RESEARCH, EU)
 

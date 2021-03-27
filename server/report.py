@@ -33,15 +33,21 @@ def distribute_reports(reports: dict, tmp_folder: str, channel: str = "file-json
     """ distribute the report, needs a channel :
         - file-json
         - file-yaml
-        - TODO : dict (python object for high speed simulation like genetic algo)
+        - dict {"Bob" : report_as_dict, "Joe": report_as_dict} (python object for high speed simulation like genetic algo)
         - TODO : email
         - TODO : file-human-readable
     """
-    for player, report in reports.items():
-        if channel == "file-json":
+    if channel == "file-json":
+        for player, report in reports.items():
             report.to_json_file(tmp_folder)
-        elif channel == "file-yaml":
+    elif channel == "file-yaml":
+        for player, report in reports.items():
             report.to_yaml_file(tmp_folder)
+    elif channel == "dict":
+        reports_dict = {}
+        for player, report in reports.items():
+            reports_dict[player.name] = report.to_dict()
+        return reports_dict
 
 class Report:
     def __init__(self, player: Player):
@@ -80,20 +86,28 @@ class Report:
         logger.debug(f"{LOG_LEVEL(log_level)}{msg}")
 
     def to_dict(self):
-        return {
+        dictionary = {
             "turn": self.turn,
             "player_status": self.player_status,
             "colonies_status": self.colonies_status,
             "galaxy_status": self.galaxis_status,
             "ships_status": self.ships_status
         }
+        return dictionary
 
     def evaluate_ship_status(self):
-        # TODO : restrain to visible ships
         status = []
-        all_ships = Ship.ships
-        for ship in all_ships.values():
-            status.append(ship.to_dict())
+        keys = set()
+
+        # adding ships from position where I am
+        positions = self.positions_where_i_am()
+        for position in positions:
+            for ship in position.ships:
+                index = (ship.name.lower(), ship.player)
+                if index not in keys:
+                    status.append(ship.to_dict())
+                    keys.add(index)
+
         return status
 
     def evaluate_player_status(self):
@@ -147,28 +161,40 @@ class Report:
 
         return status
 
-    def find_visible_stars(self):
-        """
-        Get visible stars (war fog) from position where I am (colonies, ships)
-        """
-        coords_where_I_am = set()
+    def positions_where_i_am(self):
+        pos_where_i_am = set()
         # positions of my colonies
         colonies_positions = [colony.planet.star.position for colony in self.player.colonies]
 
         # positions of my ships
         ships_positions = [ship.position for ship in self.player.ships]
 
+        # combnination of ships and colonies positions
         for position in colonies_positions:
-            coords_where_I_am.add((position.x, position.y, position.z))
+            pos_where_i_am.add(position)
         for position in ships_positions:
-            coords_where_I_am.add((position.x, position.y, position.z))
+            pos_where_i_am.add(position)
+
+        return pos_where_i_am
+
+    def coords_where_i_am(self):
+        pos_where_i_am = self.positions_where_i_am()
+        coords_where_i_am = [(position.x, position.y, position.z) for position in pos_where_i_am]
+
+        return coords_where_i_am
+
+    def find_visible_stars(self):
+        """
+        Get visible stars (war fog) from position where I am (colonies, ships)
+        """
+        coords_where_i_am = self.coords_where_i_am()
 
         # get star within the visibility range
         all_stars_dict = Star.stars
         all_stars_coords = [[star.position.x, star.position.y, star.position.z] for star in all_stars_dict.values()]
 
         # calculate distances           TODO : is it usefull to cache something here ?
-        array_me = np.array([[x, y, z] for x, y, z in coords_where_I_am])
+        array_me = np.array([[x, y, z] for x, y, z in coords_where_i_am])
         array_stars = np.array(all_stars_coords)
         distances = cdist(array_me, array_stars, "euclidean")
 

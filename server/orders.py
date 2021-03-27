@@ -41,7 +41,7 @@ class Orders:
     @staticmethod
     def parsing_file(filename: str):
         """ parse a file of orders """
-        player = ""
+        player_name = ""
         prod = {}
         move = []
         combat = []
@@ -51,27 +51,27 @@ class Orders:
             for line in f:
                 result = Orders.parsing_line(line)
                 if result:
-                    if result[0] == "production":
+                    if result[0].lower() == "production":
                         # Each colony name is a key of the dict, and data is a list of action/commands
                         colony_commands = []
-                        prod[result[2]] = colony_commands
+                        prod[result[2].lower()] = colony_commands
                         flag = colony_commands
                         result = None
-                    elif result[0] == "movements":
+                    elif result[0].lower() == "movements":
                         flag = move
                         result = None
-                    elif result[0] == "combat":
+                    elif result[0].lower() == "combat":
                         flag = combat
                         result = None
-                    elif result[0] == "player":
+                    elif result[0].lower() == "player":
                         # Saving player's name as str, disabling Command attribution
-                        player = result[1]
+                        player_name = result[1].lower()
                         flag = None
                         result = None
 
                     if result:
                         flag.append(result)
-        return player, prod, move, combat
+        return player_name, prod, move, combat
 
     @staticmethod
     def parsing_line(line: str):
@@ -82,7 +82,7 @@ class Orders:
         3- regex split according to whitespace but conserve between quotes "..." or '...'
         """
         line = line.split("#")[0]
-        line = line.lower()
+        # line = line.lower()
         matches = command_split_regex.finditer(line)
         result = []
         for m in matches:
