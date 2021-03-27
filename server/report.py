@@ -147,15 +147,15 @@ class Report:
             star_dict = star.to_dict()
 
             # export visible planets
-            # TODO : retrain to only visited star system
             star_dict["planets"] = []
-            for planet in star.planets.values():
-                planet_dict = planet.to_dict()
-                planet_dict["food_factor"] = food_planet_factor(planet, self.player)
-                planet_dict["meca_factor"] = parts_planet_factor(planet, self.player)
-                planet_dict["max_food_prod"], planet_dict["max_wf"] = prod.find_max_food_production(planet, self.player)
-                planet_dict["max_parts_prod"], planet_dict["max_ro"] = prod.find_max_parts_production(planet, self.player)
-                star_dict["planets"].append(planet_dict)
+            if self.player in star.visited_by:
+                for planet in star.planets.values():
+                    planet_dict = planet.to_dict()
+                    planet_dict["food_factor"] = food_planet_factor(planet, self.player)
+                    planet_dict["meca_factor"] = parts_planet_factor(planet, self.player)
+                    planet_dict["max_food_prod"], planet_dict["max_wf"] = prod.find_max_food_production(planet, self.player)
+                    planet_dict["max_parts_prod"], planet_dict["max_ro"] = prod.find_max_parts_production(planet, self.player)
+                    star_dict["planets"].append(planet_dict)
 
             status.append(star_dict)
 

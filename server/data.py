@@ -211,7 +211,7 @@ class Star:
             # store initialisation values
             instance.position = position
             instance.name = None                # has to be choose by a player
-            instance.visited_by = []
+            instance.visited_by = set()         # list of player_object
             instance.planets = {}
 
             # backrefs
@@ -225,6 +225,26 @@ class Star:
             "name": self.name,
             "position": self.position.to_dict()
         }
+
+    @staticmethod
+    def exists(position: Position):
+        response = False
+        if position in Star.stars:
+            response = True
+        return response
+
+    @staticmethod
+    def update_visited():
+        # colonies
+        for planet, colony in Colony.colonies.items():
+            planet.star.visited_by.add(colony.player)
+
+        # ships
+        for (ship_name, player), ship in Ship.ships.items():
+            # Is there a star at this position ?
+            if Star.exists(ship.position):
+                star = Star(ship.position)
+                star.visited_by.add(player)
 
 class Planet:
     """ Fabrique pour éviter les doublons """

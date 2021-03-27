@@ -9,7 +9,7 @@ from server.orders import Orders
 import server.production as prod
 from server.report import Report
 from server.report import distribute_reports
-from server.data import Player, GameData
+from server.data import Player, GameData, Ship, Colony, Star
 from server.sbc_parameters import *
 from server.research import upgrade_tech
 from server import data
@@ -69,6 +69,12 @@ def play_one_turn(game_name: str, tmp_folder: str):
     stop = time()
     logger.debug(f"{LOG_LEVEL(2)}# Timing # Movement phase in {(stop - start) * 1000:.1f} ms")
 
+    # update visited by of star
+    start = time()
+    Star.update_visited()
+    stop = time()
+    logger.debug(f"{LOG_LEVEL(2)}# Timing # Update visibility in {(stop - start) * 1000:.1f} ms")
+
     # Combat phase - everyone together
     # TODO : implement combat system
     logger.debug(f"{LOG_LEVEL(2)}Combat phase")
@@ -93,4 +99,9 @@ def play_one_turn(game_name: str, tmp_folder: str):
     distribute_reports(reports, tmp_folder, channel="file-json")  # DEBUG
     stop = time()
     logger.debug(f"{LOG_LEVEL(2)}# Timing # Reports distribution in {(stop - start) * 1000:.1f} ms")
+
+
+
+
+
 

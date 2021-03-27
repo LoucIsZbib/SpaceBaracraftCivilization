@@ -43,6 +43,9 @@ def newgame(game_name: str, tmp_folder: str, config):
     # for player in players:
     #     print(galaxy_status(player))
 
+    # update visibility
+    Star.update_visited()
+
     # generate reports for each players
     reports = generate_initial_reports()
 
