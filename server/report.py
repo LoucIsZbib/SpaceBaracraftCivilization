@@ -15,12 +15,13 @@ from time import time
 # logging
 logger = logging.getLogger("sbc")
 
-def generate_initial_reports(players):
+def generate_initial_reports():
     """
     A report contains
     a description of star system where the player has a colony/ship
     a description of the colonies of the player
     """
+    players = Player.players.values()
     reports = {}
     for player in players:
         report = Report(player)
@@ -172,8 +173,7 @@ class Report:
         distances = cdist(array_me, array_stars, "euclidean")
 
         # evaluate visbility matrix
-        # visible_matrix = np.where(distances < VISIBILITY_RANGE)[1]  # problem, gives us 2D array becasue input is 2D
-        visible_matrix = np.flatnonzero(distances < VISIBILITY_RANGE)  # same as previous, but in 1D
+        visible_matrix = np.where(distances < VISIBILITY_RANGE)[1]  # problem, gives us 2D array becasue input is 2D --> [1] necessary
 
         # retrieve list of visible position
         visible_stars = set()

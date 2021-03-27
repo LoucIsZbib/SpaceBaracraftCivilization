@@ -31,20 +31,20 @@ def newgame(game_name: str, tmp_folder: str, config):
     GameData().turn = 0
 
     # Creates players
-    players = create_player(config)
+    star_names = create_player(config)
 
     # Create galaxy
-    galaxy_radius = create_galaxy(len(players))
+    galaxy_radius = create_galaxy(len(Player.players))
     # print(galaxy_status())
 
     # Make homes (with new star and custom planets)
-    make_homes(galaxy_radius)
+    make_homes(galaxy_radius, star_names)
     # DEBUG
     # for player in players:
     #     print(galaxy_status(player))
 
     # generate reports for each players
-    reports = generate_initial_reports(players)
+    reports = generate_initial_reports()
 
     # send reports to players
     # distribute_reports(reports, tmp_folder, channel="file-yaml")  # DEBUG
@@ -52,6 +52,7 @@ def newgame(game_name: str, tmp_folder: str, config):
 
 
 def create_player(config):
+    star_names = {}
     for player_config in config["players"]:
         # creating the player
         player = Player(name=player_config["name"],
@@ -70,9 +71,12 @@ def create_player(config):
         player.techs["meca"] = Technologies(level=meca, progression=0)
         player.techs["gv"] = Technologies(level=GV_START_LEVEL, progression=0)
 
+        # assign first star names
+        star_names[player.name] = player_config["home_name"]
+
     logger.info(f"{LOG_LEVEL(2)}-- Creating {len(Player.players)} Players")
 
-    return Player.players.values()
+    return star_names
 
 def create_galaxy(nb_of_player: int,
                   player_density: int = STAR_DENSITY_PER_PLAYER,
@@ -203,7 +207,7 @@ def custom_asymetrical_rnd(left: float, mode: float, right: float, cohesion: flo
 #     return msg
 
 
-def make_homes(galaxy_radius):
+def make_homes(galaxy_radius, star_names):
     """ Creating new star with new planets with custom properties adjusted to player
         Also create a first colony
      """
@@ -222,7 +226,11 @@ def make_homes(galaxy_radius):
                 has_been_created = True
 
         star = Star(position)
-        logger.info(f"{LOG_LEVEL(3)}creating new star ({position.x} {position.y} {position.z}) and 4 planets for player {player.name}")
+
+        # assign star name
+        star.name = star_names[player.name]
+
+        logger.info(f"{LOG_LEVEL(3)}creating new star ({star.name}- {position.x} {position.y} {position.z}) and 4 planets for player {player.name}")
 
         # create custom planets for equal start condition
         """start condition : 4 planets, 1 suitable, 1 almost suitable, 2 not suitable"""

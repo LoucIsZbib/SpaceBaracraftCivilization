@@ -295,11 +295,13 @@ class Planet:
             "numero": self.numero
         }
 
+    @property
+    def name(self):
+        return f"{self.star.name}-{self.numero}"
+
 class Colony:
     """ Fabrique pour éviter les doublons """
     colonies = {}
-
-    # TODO : gérer l'initialisation avec des valeurs non nulles de WF / RO ?
 
     def __new__(cls, *args, **kwargs):
         """
@@ -354,7 +356,7 @@ class Colony:
 
     def to_dict(self):
         return {
-            # "name": ??,       # TODO
+            "name": self.name,
             "WF": self.WF,
             "RO": self.RO,
             "food": self.food,
@@ -365,11 +367,13 @@ class Colony:
         # remove backrefs
         self.player.colonies.remove(self)
 
+    @property
+    def name(self):
+        return f"{self.planet.name}"
+
 class Ship:
     """ Fabrique pour éviter les doublons """
     ships = {}
-
-    # TODO : check unicity in name in lowercase
 
     def __new__(cls, *args, **kwargs):
         """
@@ -378,11 +382,17 @@ class Ship:
             Possible
                 Ship(ship_name, player_object)
                 Ship( name=ship_name,
-                      player=player_object,     # TODO : utilisation aussi de player_name ?
+                      player=player_object,
                       size=2,
                       type="BF",
                       position=position_object  # mandatory, a ship is always somewhere
                     )
+
+            Notes about case-sensitivity:
+            - ship.name is case-sensitive
+            - Ship selection is case-insentive
+            - Ship creation is case-sensitive
+            - Ship.ships is case-insensitive
         """
         if len(args) ==2:
             name = args[0]
@@ -392,7 +402,8 @@ class Ship:
             player = kwargs["player"]
         else:
             raise TypeError(f"Ship with no *args or **kwargs")
-        index = (name, player)
+        name_lower = name.lower()
+        index = (name_lower, player)
 
         if index in cls.ships:
             # the ship already exists, return it
@@ -458,3 +469,14 @@ class Ship:
         # removing backref
         self._position.ships.remove(self)
         self.player.ships.remove(self)
+        index = (self.name.lower(), self.player)
+        del self.ships[index]
+
+    @staticmethod
+    def exists(ship_name: str, player: Player):
+        response = False
+        index = (ship_name.lower(), player)
+        if index in Ship.ships:
+            response = True
+        return response
+

@@ -48,6 +48,8 @@ class NewTurn:
         # Movements
         elif cmd == "jump":
             action = NewTurn.jump
+        elif cmd == "name":
+            action = NewTurn.aassign_name
 
         # Combat
         elif cmd == "attack":
@@ -177,6 +179,46 @@ class NewTurn:
             # object unknown
             raise Exception(f"build : unknown object {what}")
 
+    def assign_name(self, arguments: List[str]):
+        """
+            assign a name to star system -and its planets and futures colonies-
+
+            NAME X Y Z Earth
+            arguments = ["X", "Y", "Z", "Earth"]
+
+        """
+        # parse data    TODO : check syntax ?
+        x = int(arguments[0])
+        y = int(arguments[1])
+        z = int(arguments[2])
+        position = Position(x, y, z)
+        name = arguments[3]
+
+        # check if the player is at this position
+        present = False
+        for ship in position.ships:
+            if ship.player == self.player:
+                present = True
+                break
+        if not present:
+            self.report.record_prod(f"you are not in {x} {y} {z}, can't assign a name to the star", 5)
+            return
+
+        # check if there is a star at these coords
+        if position not in Star.stars:
+            self.report.record_prod(f"there is no star in {x} {y} {z}", 5)
+            return
+
+        # check if it already has a name
+        star = Star(position)
+        if star.name:
+            self.report.record_prod(f"Star in {x} {y} {z} already has a name : {star.name}", 5)
+            return
+
+        # now we an give the name to the star
+        star.name = name
+        self.report.record_prod(f"star in {x} {y} {z} is now called {star.name}", 5)
+
     def create_ships(self, ship_type: str, size: int, name: str):
         """ Generic method to create a ship """
         # BIO or MECA ?
@@ -252,7 +294,7 @@ class NewTurn:
 
         # Ship concerned
         ship_type, ship_size, ship_name = Ship.parse_ship(arguments[:2])
-        if (ship_type, self.player) not in Ship.ships:
+        if not Ship.exists(ship_name, self.player):
             # ship doesn't exists !
             self.report.record_mov(f"{ship_name} doesn't exist for player {self.player.name}")
             return
@@ -270,7 +312,7 @@ class NewTurn:
             z = int(destination[2])
 
             # Retrieve corresponding position
-            destination_position = Position(x, y , z)
+            destination_position = Position(x, y, z)
             jump_success = movements.jump(self.player, ship, destination_position)
 
         else:
@@ -284,6 +326,6 @@ class NewTurn:
             jump_success = False
 
         if jump_success:
-            self.report.record_mov(f"{ship_type}{ship_size} {ship_name} successfully jumped to {destination}")
+            self.report.record_mov(f"{ship_type}{ship_size} {ship_name} successfully jumped to {destination}", 5)
         else:
-            self.report.record_mov(f"{ship_type}{ship_size} {ship_name} failed to jump to {destination}")
+            self.report.record_mov(f"{ship_type}{ship_size} {ship_name} failed to jump to {destination}", 5)
