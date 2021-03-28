@@ -1,4 +1,4 @@
-from server.data import db, Planet, Player, Tech
+from server.data import Player, Technologies
 
 import random
 
@@ -18,21 +18,18 @@ def upgrade_tech(player: Player, tech_str: str, qty: int):
 
     returns new_level, level_gain
     """
-    with db.atomic():
-        tech = Tech.select().join(Player).where(Tech.player == player, Tech.tech == tech_str).get()
-        initial_level = tech.level
+    tech = player.techs[tech_str]
+    initial_level = tech.level
 
-        random_factor = random.uniform(0.75, 1.25)
-        real_investment = int(qty * random_factor)
+    random_factor = random.uniform(0.75, 1.25)
+    real_investment = int(qty * random_factor)
 
-        tech.progression += real_investment
+    tech.progression += real_investment
 
-        # current_level² = cost_for_next_level
-        while tech.progression >= tech.level ** 2:
-            # level up
-            tech.progression -= tech.level ** 2
-            tech.level += 1
-
-        tech.save()
+    # current_level² = cost_for_next_level
+    while tech.progression >= tech.level ** 2:
+        # level up
+        tech.progression -= tech.level ** 2
+        tech.level += 1
 
     return tech.level, tech.level - initial_level

@@ -27,6 +27,7 @@ players:
         bio :  5
         meca : 15
         prefered_temperature : 450
+        home_name : "Aperture"
 
     # player 2
     -
@@ -35,12 +36,14 @@ players:
         bio :  15
         meca : 5
         prefered_temperature : -150
+        home_name : "Discovery"
 
     # player 3
     -
-        name : "Discovery"
-        email: "discovery@example.com"
+        name : "Cylon"
+        email: "cylon@example.com"
         bio :  8
         meca : 12
         prefered_temperature : 25
+        home_name : "Aurora"
 

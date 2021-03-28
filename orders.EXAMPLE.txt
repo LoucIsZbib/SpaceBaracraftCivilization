@@ -18,6 +18,8 @@ jump FF firefly PL Venus
 
 Orbit DD "ISS barakuda" PL Earth
 
+Name 10 11 12 Saturn
+
 # Last part = COMBAT
 COMBAT
 attack FF Firefly PL Venus

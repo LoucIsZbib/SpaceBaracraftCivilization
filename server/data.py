@@ -2,109 +2,311 @@ import peewee as p
 from playhouse.kv import KeyValue
 from typing import List
 import math
+import json
 
 from server.names import generate_name
 
-db = p.SqliteDatabase(None, autoconnect=True)
 
-kv = None
+from dataclasses import dataclass
 
-def use_db(path_to_db: str = "game", testing: bool = False):
-    global kv
-    if testing:
-        db.init(':memory:')
-    else:
-        db.init(f"{path_to_db}")
+class GameData:
+    """
+    Global container for game memory
+    """
+    _instance = None
 
-    kv = KeyValue(database=db, table_name="keyvalue")
+    def __new__(cls, *args, **kwargs):
+        """ Singleton """
+        if cls._instance:
+            return cls._instance
+        else:
+            instance = object.__new__(cls)
 
-def create_tables():
-    db.create_tables([Player, Tech, Case, Star, Planet, PlanetNames, Colony, Ship])
+            # initialisation
+            instance.turn = 0
+            # instance.players = {}      # Not necessary, info present within class
+            # instance.positions = {}
+            # instance.stars = {}
+            # instance.planets = {}
+            # instance.colonies = {}
+            # instance.ships = {}
 
+            cls._instance = instance
+            return instance
 
-class Player(p.Model):
-    name = p.CharField()
-    email = p.CharField()
-    EU = p.IntegerField(default=0)
-    prefered_temperature = p.IntegerField()
+    def load_gamedata(self, filename):
+        """ Loads game data from JSON file """
+        # loads data from file
+        with open(filename, "r", encoding='utf8') as f:
+            data = json.load(f)
 
-    @property
-    def bio(self):
-        return self.techs.where(Tech.tech == "bio").get().level
+        # place the data to the good place
+        # TODO : to be done
 
-    @property
-    def meca(self):
-        return self.techs.where(Tech.tech == "meca").get().level
+    def dump_gamedata(self, filename):
+        """ dumps game data to a json file """
+        # create a unique structure with all data
+        data = {}
+        # TODO : implement this
 
-    @property
-    def gv(self):
-        return self.techs.where(Tech.tech == "gv").get().level
+        # save data to json file
+        with open(filename, "w", encoding="utf8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
 
-    class Meta:
-        database = db  # This model uses the 'game.db' database
-        constraints = [p.SQL('UNIQUE ("name" COLLATE NOCASE)')]
+@dataclass
+class Technologies:
+    level: int
+    progression: int
 
-class Tech(p.Model):
-    player = p.ForeignKeyField(Player, backref="techs")
-    tech = p.CharField()
-    level = p.IntegerField()
-    progression = p.IntegerField(default=0)
+class Player:
+    """ Fabrique pour éviter les doublons """
+    players = {}
 
-    class Meta:
-        database = db  # This model uses the 'game.db' database
+    def __new__(cls, *args, **kwargs):
+        """
+        unique_key is player_name
 
-class Case(p.Model):
-    x = p.IntegerField()
-    y = p.IntegerField()
-    z = p.IntegerField()
+        Possible :
+            Player("GLadOS")
+            Player(name="GLadOS")
+            Player("GLadOS", email="abc@example.com", prefered_temperature=40)
+            Player(name="GLadOS", email="abc@example.com", prefered_temperature=40)
+        """
+        if args:
+            name = args[0]
+        elif kwargs:
+            name = kwargs["name"]
+        else:
+            raise TypeError("Player() attribute 'name' needed : Player('Bob') or Player(name='Bob')")
+
+        lower_name = name.lower()
+
+        # check for unicity
+        if lower_name in cls.players:
+            return cls.players[lower_name]
+        else:
+            # this player doesn't exist, creating instance
+            instance = object.__new__(cls)
+
+            # retrieve initialisation data
+            email = kwargs.get("email")
+            prefered_temperature = kwargs.get("prefered_temperature")
+            assert email
+            assert prefered_temperature
+
+            # store init data
+            instance.name = name
+            instance.techs = {}       # init technologies by the dedicated method in newgame.py
+            instance.email = email
+            instance.prefered_temperature = prefered_temperature
+            instance.EU = 0
+            instance.colonies = []
+            instance.ships = []
+
+            cls.players[lower_name] = instance
+            return instance
+
+class Position:
+    """ Fabrique pour éviter les doublons """
+    positions = {}
+
+    def __new__(cls, x: int, y: int, z: int):
+        """
+            unique key is (x, y, z) <-- tuple
+
+            Only one way to call :
+                Position(x, y, z)
+        """
+        coords = (x, y, z)
+        if coords in cls.positions:
+            # this position already exists, return it
+            return cls.positions[coords]
+
+        else:
+            # this position doesn't exist, create it
+            instance = object.__new__(cls)
+
+            # initialisation
+            instance.x = x
+            instance.y = y
+            instance.z = z
+            instance.distances = {}
+
+            # for backrefs
+            instance.ships = set()
+            # instance.star = None  # usefull ?
+
+            cls.positions[coords] = instance
+            return instance
+
+    def distance_to(self, position):
+        """ compute the distance from this postion (self) to another Position
+            Cache previously calculated distances
+        """
+        coords = (position.x, position.y, position.z)
+
+        # check if this has already been calculated
+        if coords in self.distances:
+            distance = self.distances[coords]
+
+        else:
+            distance = math.sqrt((self.x - position.x) ** 2
+                                 + (self.y - position.y) ** 2
+                                 + (self.z - position.z) ** 2
+                                 )
+            self.distances[coords] = distance
+
+        return distance
 
     def to_dict(self):
         return {
             "x": self.x,
             "y": self.y,
-            "z": self.z
-
+            "z": self.z,
         }
 
-    @staticmethod
-    def distance(a, b):
-        return math.sqrt(  (a.x - b.x) ** 2
-                         + (a.y - b.y) ** 2
-                         + (a.z - b.z) ** 2
-                         )
+class Star:
+    """ Fabrique pour éviter les doublons """
+    stars = {}
 
-    class Meta:
-        database = db  # This model uses the 'game.db' database
-        indexes = (
-            (("x", "y", "z"), True),  # unique index sur x, y , z
-        )
 
-class Star(p.Model):
-    case = p.ForeignKeyField(Case, backref='star')
-    name = p.CharField()
+    # TODO : solve this dilemna
+    """
+        Does the star need to have a name ?
+        If yes, it has to be unique
+        If yes, we should be able to get a star from its name or from its position
+        23/03/2021  currently it has a name, but no check about unicity (//!\\ lower ?),
+                    or easy call with name
+    """
+    # star_names = {}
 
-    def to_dict(self):
-        return {"name": self.name,
-                "position": self.case.to_dict(),
-                }
+    def __new__(cls, *args, **kwargs):
+        """
+            unique key is position_object
 
-    class Meta:
-        database = db  # This model uses the 'game.db' database
-        constraints = [p.SQL('UNIQUE ("name" COLLATE NOCASE)')]
+            Possible call :
+                Star(position_object)
+                Star(x, y, z)
 
-class Planet(p.Model):
-    star = p.ForeignKeyField(Star, backref='planets')
-    numero = p.IntegerField()
-    humidity = p.FloatField()
-    temperature = p.FloatField()
-    size = p.IntegerField()
-    atmosphere = p.FloatField()
+        """
+        if len(args) == 1:
+            position = args[0]
+            assert isinstance(position, Position)
+        elif len(args) == 3:
+            x = args[0]
+            y = args[1]
+            z = args[2]
+            position = Position(x, y, z)
+        else:
+            raise TypeError(f"Star() attribute 'position' is needed: Star(position) or Star(x, y, z)")
+
+        if position in cls.stars:
+            # this star already exists, return it
+            return cls.stars[position]
+
+        else:
+            # there is no star at this position, create a new one
+            instance = object.__new__(cls)
+
+            # store initialisation values
+            instance.position = position
+            instance.name = None                # has to be choose by a player
+            instance.visited_by = set()         # list of player_object
+            instance.planets = {}
+
+            # backrefs
+            # position.star = instance  # not usefull, Star(x, y, z) or Star(position) return the star
+
+            cls.stars[position] = instance
+            return instance
 
     def to_dict(self):
         return {
+            "name": self.name,
+            "position": self.position.to_dict()
+        }
+
+    @staticmethod
+    def exists(position: Position):
+        response = False
+        if position in Star.stars:
+            response = True
+        return response
+
+    @staticmethod
+    def update_visited():
+        # colonies
+        for planet, colony in Colony.colonies.items():
+            planet.star.visited_by.add(colony.player)
+
+        # ships
+        for (ship_name, player), ship in Ship.ships.items():
+            # Is there a star at this position ?
+            if Star.exists(ship.position):
+                star = Star(ship.position)
+                star.visited_by.add(player)
+
+class Planet:
+    """ Fabrique pour éviter les doublons """
+    planets = {}
+
+    # TODO : add name for planet, based on star name
+
+    def __new__(cls, *args, **kwargs):
+        """
+        unique key is (star, numero)
+
+        Possible
+            Planet(star, numero)
+            Planet(star=star_object,
+                   numero=1,
+                   temperature=30,
+                   humidity=75,
+
+                  )
+        """
+        if len(args) >= 2:
+            star = args[0]
+            numero = args[1]
+        elif kwargs:
+            star = kwargs['star']
+            numero = kwargs["numero"]
+        else:
+            raise Exception(f"Planet call has no args, kwargs")
+        index = (star, numero)
+
+        if index in cls.planets:
+            # this planet exists, return it
+            return cls.planets[index]
+
+        else:
+            # this planet doesn't exists, create it
+            instance = object.__new__(cls)
+
+            # initialisation
+            temperature = kwargs.get("temperature")
+            humidity = kwargs.get("humidity")
+            assert temperature
+            assert humidity
+
+            # store data
+            instance.star = star
+            instance.numero = numero
+            instance.temperature = temperature
+            instance.humidity = humidity
+
+            # backref                       # TODO : how to remove backrefs if needed ?
+            star.planets[numero] = instance
+
+            cls.planets[index] = instance
+            return instance
+
+    def to_dict(self):
+        return {
+            "star": self.star.to_dict(),
             "numero": self.numero,
-            "humidity": self.humidity,
             "temperature": self.temperature,
+            'humidity': self.humidity
         }
 
     def localisation_to_dict(self):
@@ -113,64 +315,147 @@ class Planet(p.Model):
             "numero": self.numero
         }
 
-    class Meta:
-        database = db  # This model uses the 'game.db' database
-        indexes = (
-            (("star", "numero"), True),  # unique index sur star and numero
-        )
+    @property
+    def name(self):
+        return f"{self.star.name}-{self.numero}"
 
-class PlanetNames(p.Model):
-    """ Each planet could be nammed differently by each player """
-    player = p.ForeignKeyField(Player, backref="planets_names")
-    planet = p.ForeignKeyField(Planet, backref="names")
+class Colony:
+    """ Fabrique pour éviter les doublons """
+    colonies = {}
 
-    class Meta:
-        database = db  # This model uses the 'game.db' database
-        indexes = (
-            (("player", "planet"), True),  # unique index sur star and numero
-        )
+    def __new__(cls, *args, **kwargs):
+        """
+            unique key is 'planet_object'
 
-class StarVisited(p.Model):
-    star = p.ForeignKeyField(Star, backref="visited")
-    player = p.ForeignKeyField(Player, backref="star_visited")
+            Possible
+                Colony(planet_object)           # only to get, not to create
+                Colony( planet=planet_object,
+                        player=player_object,
+                        WF=30,
+                        RO=20
+                      )
+        """
+        if args:
+            planet = args[0]
+        elif kwargs:
+            planet = kwargs["planet"]
+        else:
+            raise Exception(f"Colony call without *args or **kwargs")
 
-    class Meta:
-        database = db  # This model uses the 'game.db' database
-        indexes = (
-            (("player", "star"), True),  # unique index sur star and numero
-        )
+        if planet in cls.colonies:
+            # this colony already exists
+            return cls.colonies[planet]
 
-class Colony(p.Model):
-    planet = p.ForeignKeyField(Planet, backref="colony")
-    player = p.ForeignKeyField(Player, backref="colonies")
-    name = p.CharField()
-    WF = p.IntegerField(default=0)
-    RO = p.IntegerField(default=0)
-    food = p.IntegerField(default=0)
-    parts = p.IntegerField(default=0)
+        else:
+            # the colony doesn't exist, create it
+            instance = object.__new__(cls)
+
+            # data for initialisation
+            player = kwargs.get("player")
+            WF = kwargs.get("WF")
+            RO = kwargs.get("RO")
+            assert player
+            assert WF
+            assert RO
+
+            # initialisation
+            instance.planet = planet
+            instance.player = player
+            instance.WF = WF
+            instance.RO = RO
+            instance.food = 0               # in stockpile
+            instance.parts = 0              # in stockpile
+
+            # backref
+            player.colonies.append(instance)
+
+            cls.colonies[planet] = instance
+            return instance
+
+    # TODO handle name, same as planet
 
     def to_dict(self):
         return {
-            "colony_name": self.name,
+            "name": self.name,
             "WF": self.WF,
             "RO": self.RO,
             "food": self.food,
             "parts": self.parts
         }
 
-    class Meta:
-        database = db  # This model uses the 'game.db' database
-        indexes = (
-            (("planet", "player"), True),  # unique index sur star and numero
-        )
-        constraints = [p.SQL('UNIQUE ("name" COLLATE NOCASE)')]
+    def delete(self):
+        # remove backrefs
+        self.player.colonies.remove(self)
 
-class Ship(p.Model):
-    player = p.ForeignKeyField(Player, backref="ships")
-    case = p.ForeignKeyField(Case, backref="ships")
-    type = p.CharField()
-    name = p.CharField()
-    size = p.IntegerField()
+    @property
+    def name(self):
+        return f"{self.planet.name}"
+
+class Ship:
+    """ Fabrique pour éviter les doublons """
+    ships = {}
+
+    def __new__(cls, *args, **kwargs):
+        """
+            unique key is (ship_name, player)
+
+            Possible
+                Ship(ship_name, player_object)
+                Ship( name=ship_name,
+                      player=player_object,
+                      size=2,
+                      type="BF",
+                      position=position_object  # mandatory, a ship is always somewhere
+                    )
+
+            Notes about case-sensitivity:
+            - ship.name is case-sensitive
+            - Ship selection is case-insentive
+            - Ship creation is case-sensitive
+            - Ship.ships is case-insensitive
+        """
+        if len(args) ==2:
+            name = args[0]
+            player = args[1]
+        elif kwargs:
+            name = kwargs["name"]
+            player = kwargs["player"]
+        else:
+            raise TypeError(f"Ship with no *args or **kwargs")
+        name_lower = name.lower()
+        index = (name_lower, player)
+
+        if index in cls.ships:
+            # the ship already exists, return it
+            return cls.ships[index]
+
+        else:
+            # this ship doesn't exist, create it
+            instance = object.__new__(cls)
+
+            # initialisation
+            ship_type = kwargs.get("type")
+            size = kwargs.get("size")
+            position = kwargs.get("position")
+            assert ship_type
+            assert size
+            assert position
+            assert isinstance(position, Position)
+
+            # storing init values
+            instance.name = name
+            instance.player = player
+            instance.type = ship_type
+            instance.size = size
+            instance._position = None
+            instance.position = position
+
+            # backrefs
+            # position backref is handled by property because it can change during game
+            player.ships.append(instance)
+
+            cls.ships[index] = instance
+            return instance
 
     def to_dict(self):
         return {
@@ -178,21 +463,40 @@ class Ship(p.Model):
             "type": self.type,
             "name": self.name,
             "size": self.size,
-            "position": self.case.to_dict(),
+            "position": self.position.to_dict(),
         }
 
     @staticmethod
     def parse_ship(arguments: List[str]):
         full_type = arguments[0]
         ship_size = int(full_type[2:])
-        ship_type = full_type[:2]
+        ship_type = full_type[:2].lower()
         ship_name = arguments[1]
         return ship_type, ship_size, ship_name
 
-    class Meta:
-        database = db  # This model uses the 'game.db' database
-        indexes = (
-            (("name", "player"), True),  # unique index sur name and player
-        )
-        constraints = [p.SQL('UNIQUE ("name" COLLATE NOCASE)')]
+    @property
+    def position(self):
+        return self._position
+
+    @position.setter
+    def position(self, value: Position):
+        assert isinstance(value, Position)
+        self._position = value
+        # creating backref to easily get all ships on a position
+        value.ships.add(self)
+
+    def delete(self):
+        # removing backref
+        self._position.ships.remove(self)
+        self.player.ships.remove(self)
+        index = (self.name.lower(), self.player)
+        del self.ships[index]
+
+    @staticmethod
+    def exists(ship_name: str, player: Player):
+        response = False
+        index = (ship_name.lower(), player)
+        if index in Ship.ships:
+            response = True
+        return response
 

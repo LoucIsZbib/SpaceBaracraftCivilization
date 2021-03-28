@@ -1,7 +1,9 @@
 from bot.names import generate_name
-from bot.bot_data import Position, Planet, Player, Colony, Ship, Technologies
+from bot.bot_data import Position, Planet, Player, Colony, Ship, Technologies, Star
 import random
 from time import time
+import os
+import json
 
 class Bot:
     def __init__(self, config: dict, game_folder: str):
@@ -16,6 +18,38 @@ class Bot:
         self.colonies = {}
         self.planets = []
         self.ships = []
+        self.volatile_brain = {
+            "explo_targets": []
+        }
+
+        # load brain
+        self.brain = self.load_brain(config)
+
+    def load_brain(self, config):
+        """
+        loads bot's brain : history of some actions, intends, behavior..
+        behaviors is loaded from config_file each time to allow change of behavior during the game
+        """
+        # memory of actions, intends
+        brain_file = f"{self.game_folder}/bot_brain_{self.name}.json"
+        if os.path.exists(brain_file):
+            with open(brain_file, "r", encoding="utf8") as f:
+                brain = json.load(f)
+        else:
+            # first time, init the brain
+            brain = {
+                "visited_stars": set(),
+            }
+
+        # behavior
+        brain["behavior"] = config["behavior"]
+
+        return brain
+
+    def save_brain(self):
+        brain_file = f"{self.game_folder}/bot_brain_{self.name}.json"
+        with open(brain_file, "w", encoding="utf8") as f:
+            json.dump(self.brain, f, ensure_ascii=False, indent=4)
 
     def parse_report(self, report: dict):
         """ Parse the orders given in dict format and create objects for easy & quick manipulation """
@@ -23,6 +57,7 @@ class Bot:
 
         # reset the object memory (class attribute)
         Position.reset()
+        Star.reset()
         Planet.reset()
         Player.reset()
         Colony.reset()
@@ -31,13 +66,21 @@ class Bot:
         # parsing turn
         current_turn = report["turn"]
 
-        # parsing planets
-        for star in report["galaxy_status"]:
-            position = Position(star["position"]['x'],
-                                star['position']['y'],
-                                star['position']['z'])
-            for planet in star['planets']:
-                p = Planet(position, planet['numero'],
+        # parsing stars & planets
+        for star_status in report["galaxy_status"]:
+            # position
+            position = Position(star_status["position"]['x'],
+                                star_status['position']['y'],
+                                star_status['position']['z'])
+
+            # star
+            star = Star(position)
+            star.name = star_status["name"]
+
+            # planets
+            for planet in star_status['planets']:
+                p = Planet(star,
+                           planet['numero'],
                            temperature=planet['temperature'],
                            humidity=planet["humidity"],
                            max_food_prod=planet["max_food_prod"],
@@ -48,6 +91,7 @@ class Bot:
                            meca_factor=planet["meca_factor"]
                            )
                 self.planets.append(p)
+                star.planets[p.numero] = p
 
         # parsing players
         self.me = Player(self.name)
@@ -60,12 +104,13 @@ class Bot:
         # parsing colonies
         for colony_status in report["colonies_status"]:
             colony = Colony(self.me,
-                            Planet(Position(colony_status["planet"]["star"]["position"]["x"],
-                                            colony_status["planet"]["star"]["position"]["y"],
-                                            colony_status["planet"]["star"]["position"]["z"]),
+                            Planet(Star(colony_status["planet"]["star"]["position"]["x"],
+                                        colony_status["planet"]["star"]["position"]["y"],
+                                        colony_status["planet"]["star"]["position"]["z"]
+                                        ),
                                    colony_status["planet"]["numero"]
                                    ),
-                            name=colony_status["colony_name"],
+                            name=colony_status["name"],
                             RO=colony_status["RO"],
                             WF=colony_status["WF"],
                             food=colony_status["food"],
@@ -88,7 +133,34 @@ class Bot:
                                   )
             self.ships.append(s)
 
+        # update star.visited
+        # visited if we have a colony or if we have a ship
+        # store info in brain for persistency
+        positions = self.positions_where_i_am()
+        for position in positions:
+            if Star.exists(position):
+                self.brain["visited_stars"].add(position.to_tuple())
+        for (x, y, z) in self.brain["visited_stars"]:
+            star = Star(x, y, z)
+            star.visited = True
+
         return current_turn
+
+    def positions_where_i_am(self):
+        pos_where_i_am = set()
+        # positions of my colonies
+        colonies_positions = [colony.planet.star.position for colony in self.me.colonies]
+
+        # positions of my ships
+        ships_positions = [ship.position for ship in self.me.ships]
+
+        # combnination of ships and colonies positions
+        for position in colonies_positions:
+            pos_where_i_am.add(position)
+        for position in ships_positions:
+            pos_where_i_am.add(position)
+
+        return pos_where_i_am
 
     def play_turn(self, report: dict):
         self.turn = self.parse_report(report)
@@ -120,13 +192,31 @@ class Bot:
         # MOVEMENTS
         self.orders.append(f"MOVEMENTS")
         for ship in self.me.ships:
-            x = ship.position.x + 1
-            y = ship.position.y + 1
-            z = ship.position.z + 1
+            destination = self.closest_unvisited_star(ship)
+            x = destination.position.x
+            y = destination.position.y
+            z = destination.position.z
             self.orders.append(f"JUMP {ship.type}{ship.size} {ship.name} {x} {y} {z}")
 
         # COMBAT
         self.orders.append(f"COMBAT")
+
+    def closest_unvisited_star(self, ship: Ship):
+        # get the list of unvisited stars
+        stars = Star.stars.values()
+        visited_stars = [Star(x, y, z) for (x, y, z) in self.brain["visited_stars"]]
+        unvisited_stars = [star for star in stars if star not in visited_stars]
+
+        # sort the list by distance
+        univisted_stars_sorted = sorted(unvisited_stars, key=lambda s: ship.position.distance_to(s.position))
+
+        # remove explo targets already assigned
+        valid_sorted_destination = [star for star in univisted_stars_sorted if star not in self.volatile_brain["explo_targets"]]
+        # store this target for future explo ships
+        destination = valid_sorted_destination[0]
+        self.volatile_brain["explo_targets"].append(destination)
+
+        return destination
 
     def write_order(self):
         with open(f"{self.game_folder}/orders/orders.{self.name}.T{str(self.turn)}.txt", "w") as f:
