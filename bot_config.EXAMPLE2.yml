@@ -2,3 +2,4 @@ name : "HAL9000"
 email: "hal9000@example.com"
 bio :  15
 meca : 5
+behavior :

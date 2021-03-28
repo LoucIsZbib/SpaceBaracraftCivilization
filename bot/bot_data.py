@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import math
 """
 Contrairement au moteur de jeu, le stockage n'est pas via une bdd
 """
@@ -25,20 +26,98 @@ class Position:
             instance.y = y
             instance.z = z
             instance.ships = set()
+            instance.distances = {}
+
             return instance
 
     @classmethod
     def reset(cls):
         cls.positions = {}
 
+    def to_tuple(self):
+        return self.x, self.y, self.z
+
+    def distance_to(self, position):
+        """ compute the distance from this postion (self) to another Position
+            Cache previously calculated distances
+        """
+        coords = (position.x, position.y, position.z)
+
+        # check if this has already been calculated
+        if coords in self.distances:
+            distance = self.distances[coords]
+
+        else:
+            distance = math.sqrt((self.x - position.x) ** 2
+                                 + (self.y - position.y) ** 2
+                                 + (self.z - position.z) ** 2
+                                 )
+            self.distances[coords] = distance
+
+        return distance
+
+class Star:
+    """ Fabrique pour éviter les doublons """
+    stars = {}
+
+    def __new__(cls, *args, **kwargs):
+        """
+            unique key is position_object
+
+            Possible call :
+                Star(position_object)
+                Star(x, y, z)
+
+        """
+        if len(args) == 1:
+            position = args[0]
+            assert isinstance(position, Position)
+        elif len(args) == 3:
+            x = args[0]
+            y = args[1]
+            z = args[2]
+            position = Position(x, y, z)
+        else:
+            raise TypeError(f"Star() attribute 'position' is needed: Star(position) or Star(x, y, z)")
+
+        if position in cls.stars:
+            # this star already exists, return it
+            return cls.stars[position]
+
+        else:
+            # there is no star at this position, create a new one
+            instance = object.__new__(cls)
+
+            # store initialisation values
+            instance.position = position
+            instance.name = None                # has to be choose by a player
+            instance.visited = False         # list of player_object
+            instance.planets = {}
+
+            # backrefs
+            # position.star = instance  # not usefull, Star(x, y, z) or Star(position) return the star
+
+            cls.stars[position] = instance
+            return instance
+
+    @classmethod
+    def reset(cls):
+        cls.stars = {}
+
+    @staticmethod
+    def exists(position: Position):
+        response = False
+        if position in Star.stars:
+            response = True
+        return response
 
 class Planet:
     """ Fabrique pour éviter les doublons """
     planets = {}
 
-    def __new__(cls, position: Position, numero: int, **kwargs):
-        """ position & numero are like the unique index of an SQL table, other parameters have to be added later """
-        unique_index = (position, numero)
+    def __new__(cls, star: Star, numero: int, **kwargs):
+        """ star & numero are like the unique index of an SQL table, other parameters have to be added later """
+        unique_index = (star, numero)
         if unique_index in cls.planets:
             # The planet exists, return it
             return cls.planets[unique_index]
@@ -46,7 +125,7 @@ class Planet:
             # it doesn't exist, create the planet
             instance = object.__new__(cls)
             cls.planets[unique_index] = instance
-            instance.position = position
+            instance.star = star
             instance.numero = numero
             instance.temperature = kwargs.get('temperature')
             instance.humidity = kwargs.get('humidity')

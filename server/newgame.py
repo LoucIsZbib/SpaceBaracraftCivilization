@@ -137,7 +137,7 @@ def create_galaxy(nb_of_player: int,
         # set number of planets for this system
         nb_of_planet = random.randrange(0, max_planets_per_star, 1)
 
-        logger.debug(f"{LOG_LEVEL(3)}Star at: x: {position.x:>2} y: {position.y:>2} x: {position.z:>2}")
+        logger.debug(f"{LOG_LEVEL(3)}Star at: x: {position.x:>2} y: {position.y:>2} z: {position.z:>2}")
         # creates the planets
         for i in range(nb_of_planet):
             humidity, temperature, atmosphere, size = generate_planet(i + 1)        # TODO : atmosphere, size are not used !

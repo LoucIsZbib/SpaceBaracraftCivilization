@@ -2,3 +2,4 @@ name : "GLaDOS"
 email: "glados@example.com"
 bio :  5
 meca : 15
+behavior :

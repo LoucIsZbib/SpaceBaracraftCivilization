@@ -470,7 +470,7 @@ class Ship:
     def parse_ship(arguments: List[str]):
         full_type = arguments[0]
         ship_size = int(full_type[2:])
-        ship_type = full_type[:2]
+        ship_type = full_type[:2].lower()
         ship_name = arguments[1]
         return ship_type, ship_size, ship_name
 
