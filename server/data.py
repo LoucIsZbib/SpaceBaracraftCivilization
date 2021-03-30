@@ -280,7 +280,7 @@ class Planet:
             # Star(Earth-3)     /!\ only 1 digit for names -> max 9 planets by system
             full_name = args[0]
             star_name = full_name[:-2]
-            numero = full_name[-1:]
+            numero = int(full_name[-1:])
             star = Star(star_name)
             if Planet.exists(star, numero):
                 return cls.planets[star, numero]

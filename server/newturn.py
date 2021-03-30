@@ -1,19 +1,13 @@
 import logging
-import os
 from typing import List
-from peewee import fn
-import peewee as p
-from time import time
 
 from server.orders import Orders
 import server.production as prod
 from server.report import Report
-from server.report import distribute_reports
 from server.data import Player, GameData, Ship, Position, Colony, Star, Planet
 from server.sbc_parameters import *
 import server.sbc_parameters as sbc
 from server.research import upgrade_tech
-from server import data
 from server import movements
 
 # logging
@@ -65,9 +59,12 @@ class NewTurn:
         """
         handle production phase for a player
         1- ressources gathering (including maintenance costs)
-        2- ordres execution
+        2- maintenance cost
+        3- ordres execution, in the order given by the player (for colony, and for orders within each colony)
         """
         logger.debug(f"{LOG_LEVEL(3)}Player {self.player.name}")
+
+        # 1 - ressources gathering
         for colony in self.player.colonies:
             logger.debug(f"{LOG_LEVEL(4)}Colony {colony.name}")
             # initializing production report for this colony
@@ -80,12 +77,15 @@ class NewTurn:
             parts_prod = prod.parts_production(colony)
             colony.parts += parts_prod
             self.report.record_prod(f"parts net income = {parts_prod:.1f}", 5)
-            self.current_colony = colony
 
+        # 2 - mainteance cost
             # TODO : intégrer les coûts de maintenance des vaisseaux et autres
 
+        # 3 - orders executions
+        for colony_name, ordres in self.orders.prod_cmd.items():
+            self.current_colony = Colony(colony_name)
             # orders execution for this colony
-            for command in self.orders.prod_cmd[colony.name.lower()]:
+            for command in ordres:
                 logger.debug(f"{LOG_LEVEL(5)}cmd: {command}")
                 self.execute_action(command)
 
