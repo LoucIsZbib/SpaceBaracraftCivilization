@@ -168,17 +168,7 @@ class Position:
 class Star:
     """ Fabrique pour éviter les doublons """
     stars = {}
-
-
-    # TODO : solve this dilemna
-    """
-        Does the star need to have a name ?
-        If yes, it has to be unique
-        If yes, we should be able to get a star from its name or from its position
-        23/03/2021  currently it has a name, but no check about unicity (//!\\ lower ?),
-                    or easy call with name
-    """
-    # star_names = {}
+    star_names = {}
 
     def __new__(cls, *args, **kwargs):
         """
@@ -187,11 +177,21 @@ class Star:
             Possible call :
                 Star(position_object)
                 Star(x, y, z)
+                Star(name)              # for selection only
 
         """
+        # invocation parsing
         if len(args) == 1:
-            position = args[0]
-            assert isinstance(position, Position)
+            argument = args[0]
+            if isinstance(argument, Position):
+                position = argument
+            elif isinstance(argument, str):
+                # selection of a star by its name : selection only
+                name = argument.lower()
+                return Star.star_names[name]
+            else:
+                # error, this case is not considered
+                raise TypeError(f"Star({argument}) is not a valid star")
         elif len(args) == 3:
             x = args[0]
             y = args[1]
@@ -210,7 +210,7 @@ class Star:
 
             # store initialisation values
             instance.position = position
-            instance.name = None                # has to be choose by a player
+            instance._name = None                # has to be choose by a player
             instance.visited_by = set()         # list of player_object
             instance.planets = {}
 
@@ -246,26 +246,48 @@ class Star:
                 star = Star(ship.position)
                 star.visited_by.add(player)
 
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, value: str):
+        if self._name:
+            raise AttributeError(f"The star ({self._name} already has a name, can't assign a new one")
+        else:
+            self._name = value
+            Star.star_names[value.lower()] = self
+
 class Planet:
     """ Fabrique pour éviter les doublons """
     planets = {}
-
-    # TODO : add name for planet, based on star name
 
     def __new__(cls, *args, **kwargs):
         """
         unique key is (star, numero)
 
         Possible
-            Planet(star, numero)
+            Planet(star: Star, numero: int)
             Planet(star=star_object,
                    numero=1,
                    temperature=30,
                    humidity=75,
-
                   )
+            Planet(name : str)                # for selection only
         """
-        if len(args) >= 2:
+        if len(args) == 1:
+            # selection by name : only selection
+            # Star(Earth-3)     /!\ only 1 digit for names -> max 9 planets by system
+            full_name = args[0]
+            star_name = full_name[:-2]
+            numero = full_name[-1:]
+            star = Star(star_name)
+            if Planet.exists(star, numero):
+                return cls.planets[star, numero]
+            else:
+                raise TypeError(f"Planet({full_name}) is not a valid Planet")
+
+        elif len(args) >= 2:
             star = args[0]
             numero = args[1]
         elif kwargs:
@@ -294,8 +316,9 @@ class Planet:
             instance.numero = numero
             instance.temperature = temperature
             instance.humidity = humidity
+            instance.colony = None
 
-            # backref                       # TODO : how to remove backrefs if needed ?
+            # backref
             star.planets[numero] = instance
 
             cls.planets[index] = instance
@@ -319,6 +342,17 @@ class Planet:
     def name(self):
         return f"{self.star.name}-{self.numero}"
 
+    def delete(self):
+        # remove backrefs
+        self.star.planets.pop(self.numero)
+
+    @staticmethod
+    def exists(star: Star, numero: int):
+        response = False
+        if (star, numero) in Planet.planets:
+            response = True
+        return response
+
 class Colony:
     """ Fabrique pour éviter les doublons """
     colonies = {}
@@ -334,13 +368,19 @@ class Colony:
                         WF=30,
                         RO=20
                       )
+                Colony(name)                    # for selection only, not to create
         """
-        if args:
-            planet = args[0]
+        if len(args) ==1:
+            if isinstance(args[0], Planet):
+                planet = args[0]
+            elif isinstance(args[0], str):
+                planet = Planet(args[0])
+            else:
+                raise TypeError(f"Colony({args}) doesn't exist")
         elif kwargs:
             planet = kwargs["planet"]
         else:
-            raise Exception(f"Colony call without *args or **kwargs")
+            raise Exception(f"Colony call with bad or without *args({args}) or **kwargs({kwargs})")
 
         if planet in cls.colonies:
             # this colony already exists
@@ -368,11 +408,10 @@ class Colony:
 
             # backref
             player.colonies.append(instance)
+            planet.colony = instance
 
             cls.colonies[planet] = instance
             return instance
-
-    # TODO handle name, same as planet
 
     def to_dict(self):
         return {
@@ -386,6 +425,7 @@ class Colony:
     def delete(self):
         # remove backrefs
         self.player.colonies.remove(self)
+        self.planet.colony = None
 
     @property
     def name(self):

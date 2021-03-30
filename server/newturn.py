@@ -82,6 +82,8 @@ class NewTurn:
             self.report.record_prod(f"parts net income = {parts_prod:.1f}", 5)
             self.current_colony = colony
 
+            # TODO : intégrer les coûts de maintenance des vaisseaux et autres
+
             # orders execution for this colony
             for command in self.orders.prod_cmd[colony.name.lower()]:
                 logger.debug(f"{LOG_LEVEL(5)}cmd: {command}")
@@ -201,23 +203,23 @@ class NewTurn:
                 present = True
                 break
         if not present:
-            self.report.record_prod(f"you are not in {x} {y} {z}, can't assign a name to the star", 5)
+            self.report.record_mov(f"you are not in {x} {y} {z}, can't assign a name to the star", 5)
             return
 
         # check if there is a star at these coords
         if position not in Star.stars:
-            self.report.record_prod(f"there is no star in {x} {y} {z}", 5)
+            self.report.record_mov(f"there is no star in {x} {y} {z}", 5)
             return
 
         # check if it already has a name
         star = Star(position)
         if star.name:
-            self.report.record_prod(f"Star in {x} {y} {z} already has a name : {star.name}", 5)
+            self.report.record_mov(f"Star in {x} {y} {z} already has a name : {star.name}", 5)
             return
 
         # now we an give the name to the star
         star.name = name
-        self.report.record_prod(f"star in {x} {y} {z} is now called {star.name}", 5)
+        self.report.record_mov(f"star in {x} {y} {z} is now called {star.name}", 5)
 
     def create_ships(self, ship_type: str, size: int, name: str):
         """ Generic method to create a ship """
@@ -275,6 +277,9 @@ class NewTurn:
         self.report.record_prod(f"Research investissement of {available} : Tech {tech_str} level is now {level} (+{gain})", 5)
 
     def sell(self, arguments: List[str]):
+        """
+        SELL 10 food
+        """
         qty = int(arguments[0])
         what = arguments[1]
 

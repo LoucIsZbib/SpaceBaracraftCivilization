@@ -1,9 +1,9 @@
-# This is a command, works also within a line : everything on right is ignored
+# This is a comment, works also within a line : everything on right is ignored
 # First line = name of the Player
 player Flibustiers
 
 # First part = PRODUCTION
-PRODUCTION PL Earth
+PRODUCTION PL Earth-1
 build 50 WF
 
 Production PL "Red Mars"
