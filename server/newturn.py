@@ -259,8 +259,9 @@ class NewTurn:
                 Ship(name=name,
                      player=self.player,
                      size=size,
-                     type=ship_type,
-                     position=self.current_colony.planet.star.position
+                     ship_type=ship_type,
+                     position=self.current_colony.planet.star.position,
+                     create=True
                      )
                 self.report.record_prod(f"Ship {ship_type}{size} {name} has been build", 5)
         else:

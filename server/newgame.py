@@ -60,7 +60,8 @@ def create_player(config):
         # creating the player
         player = Player(name=player_config["name"],
                         email=player_config["email"],
-                        prefered_temperature=player_config["prefered_temperature"]
+                        prefered_temperature=player_config["prefered_temperature"],
+                        create=True
                         )
         logger.debug(f"{LOG_LEVEL(3)}+ player {player.name} added")
 
@@ -129,7 +130,7 @@ def create_galaxy(nb_of_player: int,
     # stars creation
     while len(Star.stars) < nb_of_stars:
         x, y, z = generate_star_position(galaxy_radius)
-        Star(x, y, z)
+        Star(Position(x, y, z), create=True)
     logger.info(f"{LOG_LEVEL(3)}number of stars created : {len(Star.stars)}")
 
     # planets creation
@@ -144,7 +145,8 @@ def create_galaxy(nb_of_player: int,
             Planet(star=star,
                    numero=i,
                    temperature=temperature,
-                   humidity=humidity
+                   humidity=humidity,
+                   create=True
                    )
     logger.info(f"{LOG_LEVEL(3)}number of planets created : {len(Planet.planets)}")
 
@@ -174,7 +176,7 @@ def generate_planet(numero):
     size = random.randrange(MIN_PLANET_SIZE, MAX_PLANET_SIZE, 10)
     logger.debug(f"{LOG_LEVEL(4)}planet_nb: {numero}   humidity= {humidity:>6.2f}   temperature={temperature:>7.1f}   size={size:>4}   atmosphere={atmosphere:>7.3f}")
 
-    return humidity, temperature, atmosphere, size
+    return int(humidity), int(temperature), atmosphere, size
 
 def generate_custom_planet(humidity: int, temperature: int, planet_size: int = START_PLANET_SIZE):
     """ Create a custom planet to fit player characteristics """
@@ -183,7 +185,7 @@ def generate_custom_planet(humidity: int, temperature: int, planet_size: int = S
     size = planet_size
     logger.debug(f"{LOG_LEVEL(4)}custom planet :   humidity= {humidity:>6.2f}   temperature={temperature:>7.1f}   size={size:>4}   atmosphere={atmosphere:>7.3f}")
 
-    return humidity, temperature, atmosphere, size
+    return int(humidity), int(temperature), atmosphere, size
 
 def custom_asymetrical_rnd(left: float, mode: float, right: float, cohesion: float = 2):
     """
@@ -218,17 +220,17 @@ def make_homes(galaxy_radius, star_names):
     for player in Player.players.values():
         # generate new star
         position = None
-        has_been_created = False
-        while not has_been_created:
+        will_be_created = False
+        while not will_be_created:
             x, y, z = generate_star_position(galaxy_radius)
             position = Position(x, y, z)
             if position in Star.stars:
                 logger.debug(f"{LOG_LEVEL(3)}There is already a star in {x} {y} {z}, reroll")
             else:
                 logger.debug(f"{LOG_LEVEL(3)}There is no star in {x} {y} {z}, creating one for home planet")
-                has_been_created = True
+                will_be_created = True
 
-        star = Star(position)
+        star = Star(position, create=True)
 
         # assign star name
         star.name = star_names[player.name]
@@ -250,7 +252,8 @@ def make_homes(galaxy_radius, star_names):
             Planet(star=star,
                    numero=i,
                    temperature=temperature,
-                   humidity=humidity
+                   humidity=humidity,
+                   create=True
                    )                            # TODO : atmosphere and size not used !!
 
         # make home colony
@@ -261,6 +264,7 @@ def make_homes(galaxy_radius, star_names):
         Colony(planet=home_planet,
                player=player,
                WF=working_force,
-               RO=robots
+               RO=robots,
+               create=True
                )
 

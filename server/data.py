@@ -59,40 +59,53 @@ class Technologies:
     progression: int
 
 class Player:
-    """ Fabrique pour éviter les doublons """
+    """
+    Utilise une fabrique pour éviter les doublons
+
+    unique key is player_name: str
+
+    Creation :
+        Player( name="GLadOS",
+                email="abc@example.com",
+                prefered_temperature=40,
+                create=True
+              )
+
+    Selection :
+        Player("GLadOS")
+        Player(name="GLadOS")
+
+    """
     players = {}
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, name: str, email: str = None, prefered_temperature: int = None, create: bool = False):
         """
         unique_key is player_name
 
-        Possible :
+        Creation :
+            Player( name="GLadOS",
+                    email="abc@example.com",
+                    prefered_temperature=40,
+                    create=True
+                  )
+
+        Selection :
             Player("GLadOS")
             Player(name="GLadOS")
-            Player("GLadOS", email="abc@example.com", prefered_temperature=40)
-            Player(name="GLadOS", email="abc@example.com", prefered_temperature=40)
         """
-        if args:
-            name = args[0]
-        elif kwargs:
-            name = kwargs["name"]
-        else:
-            raise TypeError("Player() attribute 'name' needed : Player('Bob') or Player(name='Bob')")
-
         lower_name = name.lower()
 
-        # check for unicity
-        if lower_name in cls.players:
-            return cls.players[lower_name]
-        else:
+        if create:
+            # be sure we have the info
+            assert isinstance(email, str)
+            assert isinstance(prefered_temperature, int)
+
+            # check for unicity
+            if cls.exists(lower_name):
+                raise LookupError(f"Player({lower_name}) already exists !")
+
             # this player doesn't exist, creating instance
             instance = object.__new__(cls)
-
-            # retrieve initialisation data
-            email = kwargs.get("email")
-            prefered_temperature = kwargs.get("prefered_temperature")
-            assert email
-            assert prefered_temperature
 
             # store init data
             instance.name = name
@@ -103,11 +116,38 @@ class Player:
             instance.colonies = []
             instance.ships = []
 
+            # backrefs
             cls.players[lower_name] = instance
+
             return instance
 
+        else:
+            # just retrieve the Player by its name
+
+            if cls.exists(lower_name):
+                return cls.players[lower_name]
+
+            else:
+                raise LookupError(f"Player({lower_name}) doesn't exists !")
+
+    @classmethod
+    def exists(cls, name: str):
+        lower_name = name.lower()
+        exists = False
+        if lower_name in cls.players:
+            exists = True
+        return exists
+
 class Position:
-    """ Fabrique pour éviter les doublons """
+    """
+    Représente les coordonnées d'un secteur (imaginez une case d'un jeu de plateau en 3D)
+
+    Fabrique pour éviter les doublons
+    unique key is (x, y, z) <-- tuple
+
+    Only one way to call :
+        Position(x, y, z)  # get or create
+    """
     positions = {}
 
     def __new__(cls, x: int, y: int, z: int):
@@ -115,9 +155,13 @@ class Position:
             unique key is (x, y, z) <-- tuple
 
             Only one way to call :
-                Position(x, y, z)
+                Position(x, y, z)  # get or create
         """
+        assert isinstance(x, int)
+        assert isinstance(y, int)
+        assert isinstance(z, int)
         coords = (x, y, z)
+
         if coords in cls.positions:
             # this position already exists, return it
             return cls.positions[coords]
@@ -134,9 +178,9 @@ class Position:
 
             # for backrefs
             instance.ships = set()
-            # instance.star = None  # usefull ?
-
+            # instance.star = None              # usefull ? Star(position) do the job
             cls.positions[coords] = instance
+
             return instance
 
     def distance_to(self, position):
@@ -166,59 +210,85 @@ class Position:
         }
 
 class Star:
-    """ Fabrique pour éviter les doublons """
+    """
+    Fabrique pour éviter les doublons
+
+    unique key is position_object
+
+    Creation :
+        Star(position: Position, create=True)
+
+    Selection :
+        Star(position_object)
+        Star(x, y, z)
+        Star(name)
+    """
     stars = {}
     star_names = {}
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args, create: bool = False):
         """
-            unique key is position_object
+        unique key is position_object
 
-            Possible call :
-                Star(position_object)
-                Star(x, y, z)
-                Star(name)              # for selection only
+        Creation :
+            Star(position: Position, create=True)
 
+        Selection :
+            Star(position_object)
+            Star(x, y, z)
+            Star(name)
         """
-        # invocation parsing
-        if len(args) == 1:
-            argument = args[0]
-            if isinstance(argument, Position):
-                position = argument
-            elif isinstance(argument, str):
-                # selection of a star by its name : selection only
-                name = argument.lower()
-                return Star.star_names[name]
-            else:
-                # error, this case is not considered
-                raise TypeError(f"Star({argument}) is not a valid star")
-        elif len(args) == 3:
-            x = args[0]
-            y = args[1]
-            z = args[2]
-            position = Position(x, y, z)
-        else:
-            raise TypeError(f"Star() attribute 'position' is needed: Star(position) or Star(x, y, z)")
+        if create:
+            position = args[0]
+            assert isinstance(position, Position)
 
-        if position in cls.stars:
-            # this star already exists, return it
-            return cls.stars[position]
+            # check unicity
+            if cls.exists(position):
+                raise LookupError(f"Star({position}) exists !")
 
-        else:
             # there is no star at this position, create a new one
             instance = object.__new__(cls)
 
             # store initialisation values
             instance.position = position
-            instance._name = None                # has to be choose by a player
-            instance.visited_by = set()         # list of player_object
+            instance._name = None  # has to be choose by a player
+            instance.visited_by = set()  # list of player_object
             instance.planets = {}
 
             # backrefs
             # position.star = instance  # not usefull, Star(x, y, z) or Star(position) return the star
-
             cls.stars[position] = instance
+
             return instance
+
+        else:
+            # just retrieve the star object
+            if len(args) == 1:
+                argument = args[0]
+                if isinstance(argument, Position):
+                    # selection by position object
+                    position = argument
+                    return Star.stars[position]
+
+                elif isinstance(argument, str):
+                    # selection of a star by its name
+                    lower_name = argument.lower()
+                    return Star.star_names[lower_name]
+
+                else:
+                    # error, this case is not considered
+                    raise TypeError(f"Star({argument}) is not a valid star")
+
+            elif len(args) == 3:
+                # selection by coords
+                x = args[0]
+                y = args[1]
+                z = args[2]
+                position = Position(x, y, z)
+                return cls.stars[position]
+
+            else:
+                raise TypeError(f"Star() attribute 'position' is needed: Star(position) or Star(x, y, z)")
 
     def to_dict(self):
         return {
@@ -259,57 +329,61 @@ class Star:
             Star.star_names[value.lower()] = self
 
 class Planet:
-    """ Fabrique pour éviter les doublons """
+    """
+    Fabrique pour éviter les doublons
+
+    unique key is (star, numero)
+
+    creation :
+        Planet(star: Star,
+               numero: int = 1,
+               temperature: int = 30,
+               humidity: int = 75,
+               create=True
+              )
+
+    Selection :
+        Planet(star=star_obejct, numero=3)
+        Planet(name=planet_name)
+    """
     planets = {}
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, **kwargs):
         """
         unique key is (star, numero)
 
-        Possible
-            Planet(star: Star, numero: int)
-            Planet(star=star_object,
-                   numero=1,
-                   temperature=30,
-                   humidity=75,
+        creation :
+            Planet(star: Star,
+                   numero: int = 1,
+                   temperature: int = 30,
+                   humidity: int = 75,
+                   create=True
                   )
-            Planet(name : str)                # for selection only
+
+        Selection :
+            Planet(star=star_obejct, numero=3)
+            Planet(name=planet_name)
         """
-        if len(args) == 1:
-            # selection by name : only selection
-            # Star(Earth-3)     /!\ only 1 digit for names -> max 9 planets by system
-            full_name = args[0]
-            star_name = full_name[:-2]
-            numero = int(full_name[-1:])
-            star = Star(star_name)
+        name = kwargs.get("name")
+        star = kwargs.get("star")
+        numero = kwargs.get("numero")
+        temperature = kwargs.get("temperature")
+        humidity = kwargs.get("humidity")
+        create = kwargs.get("create", False)
+
+        if create:
+            assert isinstance(star, Star)
+            assert isinstance(numero, int)
+            assert isinstance(temperature, int)
+            assert isinstance(humidity, int)
+
+            index = (star, numero)
+
+            # check for unicity
             if Planet.exists(star, numero):
-                return cls.planets[star, numero]
-            else:
-                raise TypeError(f"Planet({full_name}) is not a valid Planet")
+                raise LookupError(f"Planet({index}) already exists !")
 
-        elif len(args) >= 2:
-            star = args[0]
-            numero = args[1]
-        elif kwargs:
-            star = kwargs['star']
-            numero = kwargs["numero"]
-        else:
-            raise Exception(f"Planet call has no args, kwargs")
-        index = (star, numero)
-
-        if index in cls.planets:
-            # this planet exists, return it
-            return cls.planets[index]
-
-        else:
-            # this planet doesn't exists, create it
             instance = object.__new__(cls)
-
-            # initialisation
-            temperature = kwargs.get("temperature")
-            humidity = kwargs.get("humidity")
-            assert temperature
-            assert humidity
 
             # store data
             instance.star = star
@@ -320,9 +394,29 @@ class Planet:
 
             # backref
             star.planets[numero] = instance
-
             cls.planets[index] = instance
+
             return instance
+
+        elif name:
+            # selection by name
+            # Star(Earth-3)     /!\ only 1 digit for names -> max 9 planets by system
+            full_name = name
+            star_name = full_name[:-2]
+            numero = int(full_name[-1:])
+            star = Star(star_name)
+            index = (star, numero)
+            if Planet.exists(star, numero):
+                return cls.planets[index]
+            else:
+                raise TypeError(f"Planet({full_name}) is not a valid Planet")
+
+        else:
+            # selection by star, numero
+            assert isinstance(star, Star)
+            assert isinstance(numero, int)
+            index = (star, numero)
+            return cls.planets[index]
 
     def to_dict(self):
         return {
@@ -345,6 +439,7 @@ class Planet:
     def delete(self):
         # remove backrefs
         self.star.planets.pop(self.numero)
+        Planet.planets.pop(self.star, self.numero)
 
     @staticmethod
     def exists(star: Star, numero: int):
@@ -354,64 +449,91 @@ class Planet:
         return response
 
 class Colony:
-    """ Fabrique pour éviter les doublons """
+    """
+    Fabrique pour éviter les doublons
+
+    unique key is 'planet_object'
+
+    creation :
+        Colony( planet=planet_object,
+                player=player_object,
+                WF=30,
+                RO=20,
+                create=True
+              )
+
+    Selection :
+        Colony(planet_object)
+        Colony(name)
+    """
     colonies = {}
 
     def __new__(cls, *args, **kwargs):
         """
-            unique key is 'planet_object'
+        unique key is 'planet_object'
 
-            Possible
-                Colony(planet_object)           # only to get, not to create
-                Colony( planet=planet_object,
-                        player=player_object,
-                        WF=30,
-                        RO=20
-                      )
-                Colony(name)                    # for selection only, not to create
+        creation :
+            Colony( planet=planet_object,
+                    player=player_object,
+                    WF=30,
+                    RO=20,
+                    create=True
+                  )
+
+        Selection :
+            Colony(planet_object)
+            Colony(name)
         """
-        if len(args) ==1:
-            if isinstance(args[0], Planet):
-                planet = args[0]
-            elif isinstance(args[0], str):
-                planet = Planet(args[0])
-            else:
-                raise TypeError(f"Colony({args}) doesn't exist")
-        elif kwargs:
-            planet = kwargs["planet"]
-        else:
-            raise Exception(f"Colony call with bad or without *args({args}) or **kwargs({kwargs})")
-
-        if planet in cls.colonies:
-            # this colony already exists
-            return cls.colonies[planet]
-
-        else:
-            # the colony doesn't exist, create it
-            instance = object.__new__(cls)
-
-            # data for initialisation
+        create = kwargs.get("create", False)
+        if create:
+            planet = kwargs.get("planet")
             player = kwargs.get("player")
             WF = kwargs.get("WF")
             RO = kwargs.get("RO")
-            assert player
-            assert WF
-            assert RO
+            assert isinstance(planet, Planet)
+            assert isinstance(player, Player)
+            assert isinstance(WF, int)
+            assert isinstance(RO, int)
+
+            # check for unicity
+            if planet in cls.colonies:
+                # this colony already exists
+                raise LookupError(f"Colony on planet {planet} already exists !")
+
+            # the colony doesn't exist, create it
+            instance = object.__new__(cls)
 
             # initialisation
             instance.planet = planet
             instance.player = player
             instance.WF = WF
             instance.RO = RO
-            instance.food = 0               # in stockpile
-            instance.parts = 0              # in stockpile
+            instance.food = 0   # in stockpile
+            instance.parts = 0  # in stockpile
 
             # backref
             player.colonies.append(instance)
             planet.colony = instance
-
             cls.colonies[planet] = instance
+
             return instance
+
+        else:
+            # just selection
+            argument = args[0]
+
+            if isinstance(argument, Planet):
+                # selection by planet object
+                return cls.colonies[argument]
+
+            elif isinstance(argument, str):
+                # selection by name
+                # first select the planet of the same name
+                planet = Planet(name=argument)
+                return cls.colonies[planet]
+
+            else:
+                raise LookupError(f"Colony({argument}) selection error ! try planet_object or colony_name")
 
     def to_dict(self):
         return {
@@ -426,61 +548,69 @@ class Colony:
         # remove backrefs
         self.player.colonies.remove(self)
         self.planet.colony = None
+        Colony.colonies.pop(self.planet)
 
     @property
     def name(self):
         return f"{self.planet.name}"
 
 class Ship:
-    """ Fabrique pour éviter les doublons """
-    ships = {}
+    """
+    Fabrique pour éviter les doublons
 
-    def __new__(cls, *args, **kwargs):
-        """
-            unique key is (ship_name, player)
+    unique key is (ship_name, player)
 
-            Possible
-                Ship(ship_name, player_object)
-                Ship( name=ship_name,
-                      player=player_object,
-                      size=2,
-                      type="BF",
-                      position=position_object  # mandatory, a ship is always somewhere
-                    )
+    Creation :
+        Ship( name=ship_name,
+              player=player_object,
+              size=2,
+              type="BF",
+              position=position_object,     # mandatory, a ship is always somewhere
+              create=True
+        )
 
-            Notes about case-sensitivity:
+    Selection :
+        Ship (ship_name, player)
+
+    Notes about case-sensitivity:
             - ship.name is case-sensitive
             - Ship selection is case-insentive
             - Ship creation is case-sensitive
-            - Ship.ships is case-insensitive
+            - Ship.ships is lower_case (unique index)
+    """
+    ships = {}
+
+    def __new__(cls, name: str, player: Player, create=False, size: int = None, ship_type: str = None, position: Position = None):
         """
-        if len(args) ==2:
-            name = args[0]
-            player = args[1]
-        elif kwargs:
-            name = kwargs["name"]
-            player = kwargs["player"]
-        else:
-            raise TypeError(f"Ship with no *args or **kwargs")
+        unique key is (ship_name, player)
+
+        Creation :
+            Ship( name=ship_name,
+                  player=player_object,
+                  size=2,
+                  type="BF",
+                  position=position_object,     # mandatory, a ship is always somewhere
+                  create=True
+            )
+
+        Selection :
+            Ship (ship_name, player)
+        """
+        assert isinstance(name, str)
+        assert isinstance(player, Player)
         name_lower = name.lower()
         index = (name_lower, player)
 
-        if index in cls.ships:
-            # the ship already exists, return it
-            return cls.ships[index]
-
-        else:
-            # this ship doesn't exist, create it
-            instance = object.__new__(cls)
-
-            # initialisation
-            ship_type = kwargs.get("type")
-            size = kwargs.get("size")
-            position = kwargs.get("position")
-            assert ship_type
-            assert size
-            assert position
+        if create:
+            assert isinstance(size, int)
+            assert isinstance(ship_type, str)
             assert isinstance(position, Position)
+
+            # check for unicity
+            if cls.exists(name, player):
+                raise LookupError(f"Ship({name_lower}, {player}) doesn't exists !")
+
+            instance = object.__new__(cls)
 
             # storing init values
             instance.name = name
@@ -493,9 +623,13 @@ class Ship:
             # backrefs
             # position backref is handled by property because it can change during game
             player.ships.append(instance)
-
             cls.ships[index] = instance
+
             return instance
+
+        else:
+            # just selection
+            return cls.ships[index]
 
     def to_dict(self):
         return {
