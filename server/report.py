@@ -137,16 +137,22 @@ class Report:
 
     def evaluate_galaxy_status(self):
         """
-        get visible stars and associate planets IF they have been scanned/seen ?
+        get visible stars (and already seen star) and associate planets IF stars have been visited
         """
-        visible_stars = self.find_visible_stars()
-
         status = []
+
+        # update seen status
+        visible_stars = self.find_visible_stars()
         for star in visible_stars:
-            # export visible stars
+            star.seen_by.add(self.player)
+
+        # update report with all seen stars
+        seen_stars = [star for star in Star.stars.values() if self.player in star.seen_by]
+        for star in seen_stars:
+            # export seen star
             star_dict = star.to_dict()
 
-            # export visible planets
+            # export visible planets around this star
             star_dict["planets"] = []
             if self.player in star.visited_by:
                 for planet in star.planets.values():

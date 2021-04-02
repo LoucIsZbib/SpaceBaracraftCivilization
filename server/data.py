@@ -251,9 +251,10 @@ class Star:
 
             # store initialisation values
             instance.position = position
-            instance._name = None  # has to be choose by a player
-            instance.visited_by = set()  # list of player_object
+            instance._name = None           # has to be choosen by a player
+            instance.visited_by = {}        # key = player, value = turn when it has seen
             instance.planets = {}
+            instance.seen_by = set()        # list of player_object
 
             # backrefs
             # position.star = instance  # not usefull, Star(x, y, z) or Star(position) return the star
@@ -304,17 +305,17 @@ class Star:
         return response
 
     @staticmethod
-    def update_visited():
+    def update_visited(turn: int):
         # colonies
         for planet, colony in Colony.colonies.items():
-            planet.star.visited_by.add(colony.player)
+            planet.star.visited_by[colony.player] = turn
 
         # ships
         for (ship_name, player), ship in Ship.ships.items():
             # Is there a star at this position ?
             if Star.exists(ship.position):
                 star = Star(ship.position)
-                star.visited_by.add(player)
+                star.visited_by[player] = turn
 
     @property
     def name(self):

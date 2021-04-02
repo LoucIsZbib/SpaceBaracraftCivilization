@@ -71,9 +71,9 @@ def play_one_turn(game_name: str, tmp_folder: str):
 
     # update visited by of star
     start = time()
-    Star.update_visited()
+    Star.update_visited(GameData().turn)
     stop = time()
-    logger.debug(f"{LOG_LEVEL(2)}# Timing # Update visibility in {(stop - start) * 1000:.1f} ms")
+    logger.debug(f"{LOG_LEVEL(2)}# Timing # Update visited in {(stop - start) * 1000:.1f} ms")
 
     # Combat phase - everyone together
     # TODO : implement combat system
