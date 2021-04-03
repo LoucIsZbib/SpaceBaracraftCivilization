@@ -23,6 +23,7 @@ class NewTurn:
 
         self.report = Report(player)
         self.current_colony = None
+        self.stars_targeted_for_explo = []
 
     def execute_action(self, command: List[str]):
         """ This method assign a method to the command in order to perform the needed action, when it needs to be done """
@@ -44,6 +45,8 @@ class NewTurn:
             action = NewTurn.jump
         elif cmd == "name":
             action = NewTurn.assign_name
+        elif cmd == "explore":
+            action = NewTurn.explore
 
         # Combat
         elif cmd == "attack":
@@ -147,6 +150,50 @@ class NewTurn:
             qty_available = cost_available / price
 
         return int(qty_available)
+
+    def explore(self, arguments: List[str]):
+        """
+        Orthographique typique :
+            EXPLORE BF1 Firefly
+        """
+        # Ship concerned
+        ship_type, ship_size, ship_name = Ship.parse_ship(arguments[:2])
+        if not Ship.exists(ship_name, self.player):
+            # ship doesn't exists !
+            self.report.record_mov(f"{ship_name} doesn't exist for player {self.player.name}")
+            return
+
+        # ship exists
+        ship = Ship(ship_name, self.player)
+
+        # destination
+        # closest_unvisited_star
+
+        # get the list of unvisited stars
+        seen_stars = [star for star in Star.stars.values() if self.player in star.seen_by]
+
+        # sort the list by distance
+        stars_sorted_by_distance = sorted(seen_stars, key=lambda s: ship.position.distance_to(s.position))
+
+        # sort by last_visit : the oldest first -- conserve previous sort by distance for egality : if not visited, last visit = turn 0
+        stars_sorted = sorted(stars_sorted_by_distance, key=lambda star: star.visited_by.get(self.player, 0))
+
+        # remove explo targets already assigned
+        valid_sorted_destination = [star for star in stars_sorted if
+                                    star not in self.stars_targeted_for_explo]
+        # store this target for future explo ships
+        star_destination = valid_sorted_destination[0]
+        self.stars_targeted_for_explo.append(star_destination)
+        self.report.record_mov(f"Exploration: {ship_name} will jump to {star_destination}", 5)
+
+        # jump
+        jump_success = movements.jump(self.player, ship, star_destination.position)
+
+        # logging
+        if jump_success:
+            self.report.record_mov(f"{ship_type}{ship_size} {ship_name} successfully jumped to {star_destination}", 5)
+        else:
+            self.report.record_mov(f"{ship_type}{ship_size} {ship_name} failed to jump to {star_destination}", 5)
 
     def build(self, arguments: List[str]):
         """

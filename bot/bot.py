@@ -192,11 +192,12 @@ class Bot:
         # MOVEMENTS
         self.orders.append(f"MOVEMENTS")
         for ship in self.me.ships:
-            destination = self.closest_unvisited_star(ship)
-            x = destination.position.x
-            y = destination.position.y
-            z = destination.position.z
-            self.orders.append(f"JUMP {ship.type}{ship.size} {ship.name} {x} {y} {z}")
+            # destination = self.closest_unvisited_star(ship)
+            # x = destination.position.x
+            # y = destination.position.y
+            # z = destination.position.z
+            # self.orders.append(f"JUMP {ship.type}{ship.size} {ship.name} {x} {y} {z}")
+            self.orders.append(f"EXPLORE {ship.type}{ship.size} {ship.name}")
 
         # COMBAT
         self.orders.append(f"COMBAT")

@@ -16,7 +16,9 @@ REsearch 10 bio
 MOVEMENTS
 jump FF firefly PL Venus
 
-Orbit DD "ISS barakuda" PL Earth
+Explore FF Firefly
+
+# Orbit DD "ISS barakuda" PL Earth
 
 Name 10 11 12 Saturn
 
