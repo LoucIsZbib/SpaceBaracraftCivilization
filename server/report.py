@@ -2,7 +2,9 @@ from server.data import Player, Colony, Planet, GameData, Ship, Star
 import server.data as data
 from server.production import food_planet_factor, parts_planet_factor
 import server.production as prod
-from server.sbc_parameters import *
+# from server.sbc_parameters import *
+import server.sbc_parameters as sbc
+from server.sbc_parameters import LOG_LEVEL
 
 import yaml
 # from yaml import CDumper  # necessite ymal-cpp ?
@@ -64,6 +66,7 @@ class Report:
         self.player_status = None
         self.colonies_status = None
         self.ships_status = None
+        self.other_players = None
 
     def generate_status_report(self):
         self.turn = GameData().turn
@@ -72,6 +75,7 @@ class Report:
         self.colonies_status = self.evaluate_colonies_status()
         self.galaxis_status = self.evaluate_galaxy_status()
         self.ships_status = self.evaluate_ship_status()
+        # self.other_players =        # TODO : changer la façon de présenter les choses dans le rapport !
 
     def initialize_prod_report(self, colony_name: str):
         self.current_prod = []
@@ -122,6 +126,8 @@ class Report:
 
     def evaluate_colonies_status(self):
         status = []
+
+        # my colonies
         for colony in self.player.colonies:
             colony_status = colony.to_dict()
             colony_status["food_production"] = prod.food_production(colony)     # TODO : cache this information to avoid computing ?
@@ -133,6 +139,7 @@ class Report:
             # colony_status["planet"]["max_parts_prod"], colony_status["planet"]["max_ro"] = prod.find_max_parts_production(colony.planet, self.player)
 
             status.append(colony_status)
+
         return status
 
     def evaluate_galaxy_status(self):
@@ -167,7 +174,13 @@ class Report:
 
         return status
 
-    def positions_where_i_am(self):
+    def evaluate_others_players_status(self):
+        # On va puiser dans la mémoire morte
+        # for player in GameData().colonies_memory[]:
+        pass
+            # TODO : à implementer : ce qu'on voit des autres, se servir de la Memory :)
+
+    def positions_where_i_am(self):  # TODO : supprimer doublon avec data.positions_where_I_am()
         pos_where_i_am = set()
         # positions of my colonies
         colonies_positions = [colony.planet.star.position for colony in self.player.colonies]
@@ -205,7 +218,7 @@ class Report:
         distances = cdist(array_me, array_stars, "euclidean")
 
         # evaluate visbility matrix
-        visible_matrix = np.where(distances < VISIBILITY_RANGE)[1]  # problem, gives us 2D array becasue input is 2D --> [1] necessary
+        visible_matrix = np.where(distances < sbc.VISIBILITY_RANGE)[1]  # problem, gives us 2D array becasue input is 2D --> [1] necessary
 
         # retrieve list of visible position
         visible_stars = set()

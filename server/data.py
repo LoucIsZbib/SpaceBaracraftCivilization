@@ -1,12 +1,8 @@
-import peewee as p
-from playhouse.kv import KeyValue
 from typing import List
 import math
 import json
-
+from enum import Enum
 from server.names import generate_name
-
-
 from dataclasses import dataclass
 
 class GameData:
@@ -24,6 +20,22 @@ class GameData:
 
             # initialisation
             instance.turn = 0
+
+            """ Datastructure for colonies_memory :
+                colonies_memory =
+                {
+                    player1: {
+                        planet1: colony_memory_object,
+                        planet2: colony_memory_object
+                    },
+                    player2: {
+                        planet1: colony_memory_object,
+                        planet2: colony_memory_object
+                    },
+                }
+            """
+            instance.colonies_memory = {}
+
             # instance.players = {}      # Not necessary, info present within class
             # instance.positions = {}
             # instance.stars = {}
@@ -33,6 +45,34 @@ class GameData:
 
             cls._instance = instance
             return instance
+
+    def update_colonies_memory(self):
+        """ remember colonies of other players """
+        for player in Player.players.values():
+            # add player in memory
+            if player not in self.colonies_memory:
+                self.colonies_memory[player] = {}
+
+            # update colonies viewed this turn
+            planets = planet_i_can_see(player)
+
+            for planet in planets:
+                # is there a colony here ?
+                try:
+                    colony = Colony(planet)
+
+                    if colony.player != player:
+                        self.colonies_memory[player][planet] = ColonyMemory(
+                            player=colony.player,
+                            planet=planet,
+                            WF=colony.WF,
+                            RO=colony.RO,
+                            turn=self.turn
+                        )
+
+                except LookupError as e:
+                    # the colony doesn't exists
+                    continue
 
     def load_gamedata(self, filename):
         """ Loads game data from JSON file """
@@ -52,6 +92,11 @@ class GameData:
         # save data to json file
         with open(filename, "w", encoding="utf8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
+
+class Relation(Enum):
+    ALLY = 1
+    NEUTRAL = 2
+    ENEMY = 3
 
 @dataclass
 class Technologies:
@@ -137,6 +182,76 @@ class Player:
         if lower_name in cls.players:
             exists = True
         return exists
+
+class RelationShip:
+    """
+    Stocke les relations entre les joueurs
+
+    Les relations sont réciproques : c'est un traité/état reconnu par la communauté
+    Ainsi, pour être alliés, les 2 doivent en émettre le souhait
+    Pour arrêter une guerre, les 2 doivent se mettre d'accord
+
+    # Singleton --> classmethod uniquement
+
+    Les données sont sauvegardées dans un dict dont la clé est un tuple des 2 joueurs:
+    relation = {
+        (player1, player2): Relation(Enum),
+    }
+
+    Les getters et setters se chargent de vérifier l'ordre du tuple
+    """
+    # _instance = None
+    relations = {}
+
+    # def __new__(cls):
+    #     """ Singleton """
+    #     if cls._instance:
+    #         return cls._instance
+    #     else:
+    #         instance = object.__new__(cls)
+    #         cls._instance = instance
+    #         return instance
+
+    @classmethod
+    def set_relationship(cls, player1: Player, player2: Player, relation: Relation):
+        # on vérifie dans quel ordre c'est stocké
+        if (player1, player2) in cls.relations:
+            # update it
+            cls.relations[(player1, player2)] = relation
+        elif (player2, player1) in cls.relations:
+            # update it
+            cls.relations[(player2, player1)] = relation
+        else:
+            # ils n'étaient pas en relation, on la crée
+            cls.relations[(player1, player2)] = relation
+
+    @classmethod
+    def get_relationship(cls, player1: Player, player2: Player):
+        # On vérifie si la relation existe (tuple dans un ordre ou l'autre)
+        if (player1, player2) in cls.relations:
+            # update it
+            return cls.relations[(player1, player2)]
+        elif (player2, player1) in cls.relations:
+            # update it
+            return cls.relations[(player2, player1)]
+        else:
+            # la relation n'existe pas, donc on la crée : par défaut on est en Relation.NEUTRAL
+            cls.relations[(player1, player2)] = Relation.NEUTRAL
+            return cls.relations[(player1, player2)]
+
+    @classmethod
+    def __setitem__(cls, key, value):
+        """ key = (player1: Player, player2: Player) ; value = Relation(Enum) """
+        # tentative d'implémentation façon dictionnaire
+        player1, player2 = key
+        cls.set_relationship(player1, player2, value)
+
+    @classmethod
+    def __getitem__(cls, key):
+        """ key = (player1: Player, player2: Player) ; return their Relation(Enum) """
+        # tentative d'implémentation façon dictionnaire
+        player1, player2 = key
+        return cls.get_relationship(player1, player2)
 
 class Position:
     """
@@ -290,6 +405,9 @@ class Star:
 
             else:
                 raise TypeError(f"Star() attribute 'position' is needed: Star(position) or Star(x, y, z)")
+
+    def __str__(self):
+        return f"Star({self.name}: {self.position.x}, {self.position.y}, {self.position.z})"
 
     def to_dict(self):
         return {
@@ -555,6 +673,11 @@ class Colony:
     def name(self):
         return f"{self.planet.name}"
 
+    # @classmethod
+    # def exists(cls, value):
+    #     pass
+    #     # TODO : implémenter cette fonction
+
 class Ship:
     """
     Fabrique pour éviter les doublons
@@ -675,3 +798,159 @@ class Ship:
             response = True
         return response
 
+    @staticmethod
+    def ships_at_position(position):
+        ships = []
+        for ship in Ship.ships.values():
+            if ship.position == position:
+                ships.append(ship)
+        return ships
+
+# Pas pertinent (pour l'instant), car pas d'information changeante à stocker
+# @dataclass
+# class PlayerMemory:
+#     name: str
+
+@dataclass
+class PlanetMemory:
+    star: Star
+    numero: int
+    temperature: int
+    humidity: int
+
+@dataclass
+class ShipMemory:
+    player: Player
+    name: str
+    ship_type: str
+    size: int
+    position: Position
+
+@dataclass
+class ColonyMemory:
+    player: Player
+    planet: Planet
+    WF: int
+    RO: int
+    turn: int
+
+class Memory:
+    """
+    Cette classe est une mémoire de ce que le joueur a vu,
+    et qui depuis peut ne plus être visible (brouillard de guerre)
+
+    Classe singleton pour éviter les divergences de données
+    On pourrait même n'avoir que des méthodes de classe
+
+    Les données sont rangées par joueur, dans un dict :
+        key is player_name: str
+    Ainsi, Memory[<player_GladOS>] contient les infos que GladOS a vu
+
+    Les infos sont les suivantes :
+            {
+                player1: {
+                    "ships": [list of ships]                    # cleared every turn
+                    "colonies": [list of colony_memory_object]  # permanent, updated in case of revisiting the star
+                },
+                player2: {
+                    "ships": [list of ships]
+                    "colonies": [list of colony_memory_object]
+                },
+            }
+
+    """
+    players = {}
+
+    @classmethod
+    def update_colonies_memory(cls):
+        """ remember colonies of other players """
+        for player in Player.players.values():
+            # add player in memory
+            if player not in cls.players:
+                cls.players[player] = {}
+            memory = cls.players[player]
+
+            # on efface à chaque tour les vaisseaux vus les tours précédents, impossible à mettre à jour sinon
+            for dico in cls.players.values():
+                dico["ships"] = []
+
+            # update players and ship
+            positions = positions_where_i_am(player)
+            for position in positions:
+                for (ship_name, other_player), ship in Ship.ships_at_position(position):
+                    # (new) player is met
+                    if other_player not in memory:
+                        # nouvelle rencontre
+                        memory[other_player] = {"ships": [], "colonies": []}
+
+                    # remember his ships
+                    memory[other_player]["ships"].append(ship)
+
+            # update players and colonies
+            planets = planet_i_can_see(player)
+            for planet in planets:
+                # is there a colony here ?
+                try:
+                    colony = Colony(planet)
+
+                    other_player = colony.player
+                    if colony.player != player:     # on ne veut pas nos propres colonies, mais celles des autres
+                        # nouvelle rencontre
+                        if other_player not in memory:
+                            memory[other_player] = {"ships": [], "colonies": []}
+
+                        # remember his colony
+                        memory[other_player]["colonies"].append(ColonyMemory(
+                            player=colony.player,
+                            planet=planet,
+                            WF=colony.WF,
+                            RO=colony.RO,
+                            turn=GameData().turn
+                        ))
+
+                except LookupError as e:
+                    # there is no colony on this planet (or it has been destroyed)
+                    # on va check si on avait mémorisé une colonie à cet endroit
+                    # et supprimer son souvenir
+                    # TODO : à tester
+                    for dico in memory.values():
+                        for colony_memory in dico["colonies"]:
+                            if colony_memory.planet == planet:
+                                # remove it, it doesn't exists anymore
+                                dico["colonies"].remove(colony_memory)
+                                continue
+                    continue
+
+
+def positions_where_i_am(player: Player):
+    pos_where_i_am = set()
+    # positions of my colonies
+    colonies_positions = [colony.planet.star.position for colony in player.colonies]
+
+    # positions of my ships
+    ships_positions = [ship.position for ship in player.ships]
+
+    # combnination of ships and colonies positions
+    for position in colonies_positions:
+        pos_where_i_am.add(position)
+    for position in ships_positions:
+        pos_where_i_am.add(position)
+
+    return pos_where_i_am
+
+def planet_i_can_see(player: Player):
+    # gather positions where player is
+    pos_where_i_am = positions_where_i_am(player)
+
+    # gather stars where player is
+    stars = set()
+    for position in pos_where_i_am:
+        if Star.exists(position):
+            stars.add(Star(position))
+
+    # gather planets where player is
+    planets = set()
+    for star in stars:
+        planets.update(list(star.planets.values()))
+
+    return planets

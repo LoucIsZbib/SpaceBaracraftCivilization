@@ -146,7 +146,7 @@ class Bot:
 
         return current_turn
 
-    def positions_where_i_am(self):
+    def positions_where_i_am(self):  # TODO : supprimer doublon avec (server)data.positions_where_i_am()
         pos_where_i_am = set()
         # positions of my colonies
         colonies_positions = [colony.planet.star.position for colony in self.me.colonies]
@@ -202,22 +202,23 @@ class Bot:
         # COMBAT
         self.orders.append(f"COMBAT")
 
-    def closest_unvisited_star(self, ship: Ship):
-        # get the list of unvisited stars
-        stars = Star.stars.values()
-        visited_stars = [Star(x, y, z) for (x, y, z) in self.brain["visited_stars"]]
-        unvisited_stars = [star for star in stars if star not in visited_stars]
-
-        # sort the list by distance
-        univisted_stars_sorted = sorted(unvisited_stars, key=lambda s: ship.position.distance_to(s.position))
-
-        # remove explo targets already assigned
-        valid_sorted_destination = [star for star in univisted_stars_sorted if star not in self.volatile_brain["explo_targets"]]
-        # store this target for future explo ships
-        destination = valid_sorted_destination[0]
-        self.volatile_brain["explo_targets"].append(destination)
-
-        return destination
+    # N'est plus utile : était utilisé pour l'explo, mais la comamnde EXPLORE fait le taff
+    # def closest_unvisited_star(self, ship: Ship):
+    #     # get the list of unvisited stars
+    #     stars = Star.stars.values()
+    #     visited_stars = [Star(x, y, z) for (x, y, z) in self.brain["visited_stars"]]
+    #     unvisited_stars = [star for star in stars if star not in visited_stars]
+    #
+    #     # sort the list by distance
+    #     univisted_stars_sorted = sorted(unvisited_stars, key=lambda s: ship.position.distance_to(s.position))
+    #
+    #     # remove explo targets already assigned
+    #     valid_sorted_destination = [star for star in univisted_stars_sorted if star not in self.volatile_brain["explo_targets"]]
+    #     # store this target for future explo ships
+    #     destination = valid_sorted_destination[0]
+    #     self.volatile_brain["explo_targets"].append(destination)
+    #
+    #     return destination
 
     def write_order(self):
         with open(f"{self.game_folder}/orders/orders.{self.name}.T{str(self.turn)}.txt", "w") as f:
