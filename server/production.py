@@ -31,7 +31,8 @@ import math
 # from typing import List
 
 from server.data import Planet, Player, Colony
-from server.sbc_parameters import *
+# from server.sbc_parameters import *
+import server.sbc_parameters as sbc
 
 import logging
 
@@ -42,13 +43,13 @@ logger = logging.getLogger("sbc")
 
 def food_planet_factor(planet: Planet, player: Player):
     """ Compute the factor of BIOLOGICAL productivity relative to planet environment and player attributes """
-    temperature_factor = gauss_factor(planet.temperature, player.prefered_temperature, BASE_STD_TEMP + player.techs["bio"].level)
+    temperature_factor = gauss_factor(planet.temperature, player.prefered_temperature, sbc.BASE_STD_TEMP + player.techs["bio"].level)
     humidity_factor = max((planet.humidity + player.techs["bio"].level/2) / 100, 1)
     return temperature_factor * humidity_factor
 
 def parts_planet_factor(planet: Planet, player: Player):
     """ Compute the factor of MECHANICAL maintenance relative to planet environment and player attributes """
-    temperature_factor = gauss_factor(planet.temperature, player.prefered_temperature, BASE_STD_TEMP + player.techs["meca"].level)
+    temperature_factor = gauss_factor(planet.temperature, player.prefered_temperature, sbc.BASE_STD_TEMP + player.techs["meca"].level)
     humidity_factor = max((100-(planet.humidity + player.techs["meca"].level/2))/100, 1)
     return temperature_factor * humidity_factor
 
@@ -60,15 +61,15 @@ def gauss_factor(x: float, moy: float, std: float):
 
 def food_production(colony: Colony):
     """ Compute food balance for a colony (owned by a player) """
-    food_created = food_planet_factor(colony.planet, colony.player) * colony.WF * (BASE_MAINTENANCE_WF + BASE_PRODUCTIVITY * math.exp(-colony.WF/POP_THRESHOLD))
-    food_maintenance = BASE_MAINTENANCE_WF * colony.WF
+    food_created = food_planet_factor(colony.planet, colony.player) * colony.WF * (sbc.BASE_MAINTENANCE_WF + sbc.BASE_PRODUCTIVITY * math.exp(-colony.WF/sbc.POP_THRESHOLD))
+    food_maintenance = sbc.BASE_MAINTENANCE_WF * colony.WF
     food_balance = food_created - food_maintenance
     return food_balance
 
 def parts_production(colony: Colony):
     """ Compute spare-parts balance for a colony (owned by a player) """
-    spare_parts_created = BASE_PRODUCTIVITY * colony.RO * math.exp(-colony.RO/POP_THRESHOLD)
-    spare_parts_maintenance = BASE_MAINTENANCE_RO * colony.RO * (1 - parts_planet_factor(colony.planet, colony.player))
+    spare_parts_created = sbc.BASE_PRODUCTIVITY * colony.RO * math.exp(-colony.RO/sbc.POP_THRESHOLD)
+    spare_parts_maintenance = sbc.BASE_MAINTENANCE_RO * colony.RO * (1 - parts_planet_factor(colony.planet, colony.player))
     spare_parts_balance = spare_parts_created - spare_parts_maintenance
     return spare_parts_balance
 
@@ -89,8 +90,8 @@ def find_max_food_production(planet: Planet, player: Player):
     while net_income >= max_income:
         max_income = net_income
         wf += 10
-        food_created = food_factor * wf * (BASE_MAINTENANCE_WF + BASE_PRODUCTIVITY * math.exp(-wf/POP_THRESHOLD))
-        food_maintenance = BASE_MAINTENANCE_WF * wf
+        food_created = food_factor * wf * (sbc.BASE_MAINTENANCE_WF + sbc.BASE_PRODUCTIVITY * math.exp(-wf/sbc.POP_THRESHOLD))
+        food_maintenance = sbc.BASE_MAINTENANCE_WF * wf
         net_income = food_created - food_maintenance
 
     max_wf = wf - 10
@@ -115,8 +116,8 @@ def find_max_parts_production(planet: Planet, player: Player):
     while net_income >= max_income:
         max_income = net_income
         ro += 10
-        spare_parts_created = BASE_PRODUCTIVITY * ro * math.exp(-ro / POP_THRESHOLD)
-        spare_parts_maintenance = BASE_MAINTENANCE_RO * ro * (1 - parts_factor)
+        spare_parts_created = sbc.BASE_PRODUCTIVITY * ro * math.exp(-ro / sbc.POP_THRESHOLD)
+        spare_parts_maintenance = sbc.BASE_MAINTENANCE_RO * ro * (1 - parts_factor)
         net_income = spare_parts_created - spare_parts_maintenance
 
     max_ro = ro - 10

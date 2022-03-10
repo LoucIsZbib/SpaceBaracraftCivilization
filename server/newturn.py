@@ -5,8 +5,9 @@ from server.orders import Orders
 import server.production as prod
 from server.report import Report
 from server.data import Player, GameData, Ship, Position, Colony, Star, Planet
-from server.sbc_parameters import *
+# from server.sbc_parameters import *
 import server.sbc_parameters as sbc
+from server.sbc_parameters import FOOD, PARTS, EU
 from server.research import upgrade_tech
 from server import movements
 
@@ -33,27 +34,28 @@ class NewTurn:
         cmd = command[0].lower()
 
         # Production
-        if cmd == "build":
-            action = NewTurn.build
-        elif cmd == "research":
-            action = NewTurn.research
-        elif cmd == "sell":
-            action = NewTurn.sell
+        match cmd:
+            case "build":
+                action = NewTurn.build
+            case "research":
+                action = NewTurn.research
+            case "sell":
+                action = NewTurn.sell
 
         # Movements
-        elif cmd == "jump":
-            action = NewTurn.jump
-        elif cmd == "name":
-            action = NewTurn.assign_name
-        elif cmd == "explore":
-            action = NewTurn.explore
+            case "jump":
+                action = NewTurn.jump
+            case "name":
+                action = NewTurn.assign_name
+            case "explore":
+                action = NewTurn.explore
 
         # Combat
-        elif cmd == "attack":
-            # TODO: imagining the combat system in order to handle simultaneity
-            action = "combat"
+            case "attack":
+                # TODO: imagining the combat system in order to handle simultaneity
+                action = "combat"
 
-        # logger.debug(f"{LOG_LEVEL(5)}'{cmd}' --> {action}")  # DEBUG if problem only, too ugly otherwise
+        # logger.debug(f"{sbc.LOG_LEVEL(5)}'{cmd}' --> {action}")  # DEBUG if problem only, too ugly otherwise
 
         # -- EXECUTING ACTION --
         action(self, command[1:])
@@ -65,11 +67,11 @@ class NewTurn:
         2- maintenance cost
         3- ordres execution, in the order given by the player (for colony, and for orders within each colony)
         """
-        logger.debug(f"{LOG_LEVEL(3)}Player {self.player.name}")
+        logger.debug(f"{sbc.LOG_LEVEL(3)}Player {self.player.name}")
 
         # 1 - ressources gathering
         for colony in self.player.colonies:
-            logger.debug(f"{LOG_LEVEL(4)}Colony {colony.name}")
+            logger.debug(f"{sbc.LOG_LEVEL(4)}Colony {colony.name}")
             # initializing production report for this colony
             self.report.initialize_prod_report(colony.name)
 
@@ -89,13 +91,13 @@ class NewTurn:
             self.current_colony = Colony(colony_name)
             # orders execution for this colony
             for command in ordres:
-                logger.debug(f"{LOG_LEVEL(5)}cmd: {command}")
+                logger.debug(f"{sbc.LOG_LEVEL(5)}cmd: {command}")
                 self.execute_action(command)
 
     def movement_phase(self):
         # orders execution for the movement phase for this player
         for command in self.orders.move_cmd:
-            logger.debug(f"{LOG_LEVEL(5)}cmd: {command}")
+            logger.debug(f"{sbc.LOG_LEVEL(5)}cmd: {command}")
             self.execute_action(command)
 
     def check_if_ressources_are_available(self, qty: int, price: int, currency_type: str):
@@ -207,20 +209,20 @@ class NewTurn:
 
         # Train new WF
         if what == sbc.WF:
-            qty_available = self.check_if_ressources_are_available(qty_requested, COST_WF, FOOD)
-            cost = int(qty_available*COST_WF)
+            qty_available = self.check_if_ressources_are_available(qty_requested, sbc.COST_WF, FOOD)
+            cost = int(qty_available * sbc.COST_WF)
             self.current_colony.WF += qty_available
             self.report.record_prod(f"{qty_available} WF trained (cost={cost})", 5)
 
         # Train new RO
         elif what == sbc.RO:
-            qty_available = self.check_if_ressources_are_available(qty_requested, COST_RO, PARTS)
-            cost = int(qty_available * COST_RO)
+            qty_available = self.check_if_ressources_are_available(qty_requested, sbc.COST_RO, PARTS)
+            cost = int(qty_available * sbc.COST_RO)
             self.current_colony.RO += qty_available
             self.report.record_prod(f"{qty_available} RO trained (cost={cost})", 5)
 
         # Build new Ship
-        elif any(ship_type in what for ship_type in [BIO_FIGHTER, BIO_SCOUT, BIO_CARGO, MECA_FIGHTER, MECA_SCOUT, MECA_CARGO]):
+        elif any(ship_type in what for ship_type in [sbc.BIO_FIGHTER, sbc.BIO_SCOUT, sbc.BIO_CARGO, sbc.MECA_FIGHTER, sbc.MECA_SCOUT, sbc.MECA_CARGO]):
             ship_type, ship_size, ship_name = Ship.parse_ship(arguments[1:])
             self.create_ships(ship_type, ship_size, ship_name)
 
@@ -271,7 +273,7 @@ class NewTurn:
     def create_ships(self, ship_type: str, size: int, name: str):
         """ Generic method to create a ship """
         # BIO or MECA ?
-        if ship_type in [BIO_FIGHTER, BIO_SCOUT, BIO_CARGO]:
+        if ship_type in [sbc.BIO_FIGHTER, sbc.BIO_SCOUT, sbc.BIO_CARGO]:
             currency = FOOD
         else:
             currency = PARTS
@@ -280,13 +282,13 @@ class NewTurn:
         qty_requested = 1
 
         # Ship cost
-        if ship_type in [BIO_FIGHTER, MECA_FIGHTER]:
-            ship_cost = size * COST_LEVEL_FIGHTER
-        elif ship_type in [BIO_SCOUT, MECA_SCOUT]:
-            ship_cost = COST_SCOUT
+        if ship_type in [sbc.BIO_FIGHTER, sbc.MECA_FIGHTER]:
+            ship_cost = size * sbc.COST_LEVEL_FIGHTER
+        elif ship_type in [sbc.BIO_SCOUT, sbc.MECA_SCOUT]:
+            ship_cost = sbc.COST_SCOUT
             size = 1
-        elif ship_type in [BIO_CARGO, MECA_CARGO]:
-            ship_cost = size * COST_LEVEL_CARGO
+        elif ship_type in [sbc.BIO_CARGO, sbc.MECA_CARGO]:
+            ship_cost = size * sbc.COST_LEVEL_CARGO
         else:
             # Error : ship type unkown
             self.report.record_prod(f"Error : {ship_type} unknown", 5)
@@ -319,7 +321,7 @@ class NewTurn:
         qty = int(arguments[0])
         tech_str = arguments[1].lower()
 
-        available = self.check_if_ressources_are_available(qty, COST_RESEARCH, EU)
+        available = self.check_if_ressources_are_available(qty, sbc.COST_RESEARCH, EU)
 
         level, gain = upgrade_tech(self.player, tech_str, available)
         self.report.record_prod(f"Research investissement of {available} : Tech {tech_str} level is now {level} (+{gain})", 5)
@@ -331,7 +333,7 @@ class NewTurn:
         qty = int(arguments[0])
         what = arguments[1]
 
-        available = self.check_if_ressources_are_available(qty, SELL_TO_GET_EU, what)
+        available = self.check_if_ressources_are_available(qty, sbc.SELL_TO_GET_EU, what)
 
         self.player.EU += available
         self.report.record_prod(f"Selling {qty} {what.upper()} for {qty} EU", 5)

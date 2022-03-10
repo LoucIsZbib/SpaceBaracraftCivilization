@@ -13,7 +13,9 @@ from server.data import GameData, Player, Planet, Position, Star, Ship, Colony, 
 from server.names import generate_name
 from server.production import food_planet_factor, parts_planet_factor
 from server.report import generate_initial_reports, distribute_reports
-from server.sbc_parameters import *
+# from server.sbc_parameters import *
+import server.sbc_parameters as sbc
+from server.sbc_parameters import LOG_LEVEL
 
 # logging
 logger = logging.getLogger("sbc")
@@ -68,12 +70,12 @@ def create_player(config):
         # initializing technologies level
         bio = player_config["bio"]
         meca = player_config["meca"]
-        if bio + meca != PLAYER_START_POINTS:
+        if bio + meca != sbc.PLAYER_START_POINTS:
             raise ValueError(
-                f"player BIO and MECA levels are incorrects : BIO({bio}) + MECA({meca}) != start_points({PLAYER_START_POINTS})")
+                f"player BIO and MECA levels are incorrects : BIO({bio}) + MECA({meca}) != start_points({sbc.PLAYER_START_POINTS})")
         player.techs["bio"] = Technologies(level=bio, progression=0)
         player.techs["meca"] = Technologies(level=meca, progression=0)
-        player.techs["gv"] = Technologies(level=GV_START_LEVEL, progression=0)
+        player.techs["gv"] = Technologies(level=sbc.GV_START_LEVEL, progression=0)
 
         # assign first star names
         star_names[player.name] = player_config["home_name"]
@@ -83,9 +85,9 @@ def create_player(config):
     return star_names
 
 def create_galaxy(nb_of_player: int,
-                  player_density: int = STAR_DENSITY_PER_PLAYER,
-                  galaxy_density: int = GALAXY_DENSITY,
-                  max_planets_per_star: int = MAX_PLANETS_PER_STARS):
+                  player_density: int = sbc.STAR_DENSITY_PER_PLAYER,
+                  galaxy_density: int = sbc.GALAXY_DENSITY,
+                  max_planets_per_star: int = sbc.MAX_PLANETS_PER_STARS):
     """
     Create galaxy, stars and planets according to nb_of_player
 
@@ -130,7 +132,11 @@ def create_galaxy(nb_of_player: int,
     # stars creation
     while len(Star.stars) < nb_of_stars:
         x, y, z = generate_star_position(galaxy_radius)
-        Star(Position(x, y, z), create=True)
+        try:
+            Star(Position(x, y, z), create=True)
+        except LookupError:
+            # il y a déjà une étoile, pas de bol, tant pis on recommence
+            pass
     logger.info(f"{LOG_LEVEL(3)}number of stars created : {len(Star.stars)}")
 
     # planets creation
@@ -173,12 +179,12 @@ def generate_planet(numero):
     humidity = custom_asymetrical_rnd(0, 50, 100, cohesion=0.5)
     temperature = custom_asymetrical_rnd(-270, 20, 1000, cohesion=3)
     atmosphere = custom_asymetrical_rnd(0, 1, 90, cohesion=3)
-    size = random.randrange(MIN_PLANET_SIZE, MAX_PLANET_SIZE, 10)
+    size = random.randrange(sbc.MIN_PLANET_SIZE, sbc.MAX_PLANET_SIZE, 10)
     logger.debug(f"{LOG_LEVEL(4)}planet_nb: {numero}   humidity= {humidity:>6.2f}   temperature={temperature:>7.1f}   size={size:>4}   atmosphere={atmosphere:>7.3f}")
 
     return int(humidity), int(temperature), atmosphere, size
 
-def generate_custom_planet(humidity: int, temperature: int, planet_size: int = START_PLANET_SIZE):
+def generate_custom_planet(humidity: int, temperature: int, planet_size: int = sbc.START_PLANET_SIZE):
     """ Create a custom planet to fit player characteristics """
     solid = True
     atmosphere = custom_asymetrical_rnd(0, 1, 90, cohesion=3)
@@ -243,9 +249,9 @@ def make_homes(galaxy_radius, star_names):
         planets = []
         for i in range(1, 5):
             if i == home_planet_nb:
-                humidity, temperature, atmosphere, size = generate_custom_planet(50, player.prefered_temperature, START_PLANET_SIZE)
+                humidity, temperature, atmosphere, size = generate_custom_planet(50, player.prefered_temperature, sbc.START_PLANET_SIZE)
             elif i == second_planet:
-                humidity, temperature, atmosphere, size = generate_custom_planet(player.techs["bio"].level * 100/PLAYER_START_POINTS, player.prefered_temperature, int(START_PLANET_SIZE * 1.5))
+                humidity, temperature, atmosphere, size = generate_custom_planet(player.techs["bio"].level * 100/sbc.PLAYER_START_POINTS, player.prefered_temperature, int(sbc.START_PLANET_SIZE * 1.5))
             else:
                 humidity, temperature, atmosphere, size = generate_planet(i)
 
@@ -258,8 +264,8 @@ def make_homes(galaxy_radius, star_names):
 
         # make home colony
         # adjust pop size between bio and meca
-        working_force = int(COLONY_START_POP * player.techs["bio"].level / PLAYER_START_POINTS)
-        robots = int(COLONY_START_POP * player.techs["meca"].level / PLAYER_START_POINTS)
+        working_force = int(sbc.COLONY_START_POP * player.techs["bio"].level / sbc.PLAYER_START_POINTS)
+        robots = int(sbc.COLONY_START_POP * player.techs["meca"].level / sbc.PLAYER_START_POINTS)
         home_planet = star.planets[home_planet_nb]
         Colony(planet=home_planet,
                player=player,

@@ -59,7 +59,7 @@ if __name__ == "__main__":
     logger.debug(f"{LOG_LEVEL(1)}# Timing # Bots creation in {(stop - start) * 1000:.1f} ms")
 
     # play some turns
-    for turn_nb in range(0, 5):
+    for turn_nb in range(0, 10):
         logger.info(f"{LOG_LEVEL(0)}--- TURN {turn_nb} ---")
         # bots play
         logger.info(f"{LOG_LEVEL(1)}bots reads report from turn {turn_nb}, make choices and writing orders for turn {turn_nb+1}")

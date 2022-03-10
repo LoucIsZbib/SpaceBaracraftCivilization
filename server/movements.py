@@ -1,5 +1,6 @@
 from server.data import Planet, Player, Ship, Position
-from server.sbc_parameters import *
+# from server.sbc_parameters import *
+import server.sbc_parameters as sbc
 
 import math
 import random
@@ -14,7 +15,7 @@ def jump(player: Player, ship: Ship, destination: Position):
     """ success_chance is in % """
     distance = ship.position.distance_to(destination)
 
-    success_chance = 100 * math.exp(-distance / (JUMP_SAFE_DISTANCE + player.techs['gv'].level))
+    success_chance = 100 * math.exp(-distance / (sbc.JUMP_SAFE_DISTANCE + player.techs['gv'].level))
     lottery = random.uniform(0, 100)
 
     if lottery < success_chance:

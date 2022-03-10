@@ -1,8 +1,6 @@
 import logging
 import os
 from typing import List
-from peewee import fn
-import peewee as p
 from time import time
 
 from server.orders import Orders
@@ -10,7 +8,9 @@ import server.production as prod
 from server.report import Report
 from server.report import distribute_reports
 from server.data import Player, GameData, Ship, Colony, Star
-from server.sbc_parameters import *
+# from server.sbc_parameters import *
+import server.sbc_parameters as sbc
+from server.sbc_parameters import LOG_LEVEL
 from server.research import upgrade_tech
 from server import data
 from server.newturn import NewTurn
@@ -69,9 +69,10 @@ def play_one_turn(game_name: str, tmp_folder: str):
     stop = time()
     logger.debug(f"{LOG_LEVEL(2)}# Timing # Movement phase in {(stop - start) * 1000:.1f} ms")
 
-    # update visited by of star
+    # update fogwar vision
     start = time()
     Star.update_visited(GameData().turn)
+    GameData().update_colonies_memory()
     stop = time()
     logger.debug(f"{LOG_LEVEL(2)}# Timing # Update visited in {(stop - start) * 1000:.1f} ms")
 
@@ -79,6 +80,7 @@ def play_one_turn(game_name: str, tmp_folder: str):
     # TODO : implement combat system
     logger.debug(f"{LOG_LEVEL(2)}Combat phase")
     start = time()
+
     stop = time()
     logger.debug(f"{LOG_LEVEL(2)}# Timing # Combat phase in {(stop - start) * 1000:.1f} ms")
 
