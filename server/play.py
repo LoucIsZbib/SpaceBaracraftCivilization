@@ -2,9 +2,11 @@ import logging
 import os
 from typing import List
 from time import time
+from dataclasses import dataclass
 
 from server.orders import Orders
-import server.production as prod
+from server.production import production_phase
+from server.movements import movement_phase
 from server.report import Report
 from server.report import distribute_reports
 from server.data import Player, GameData, Ship, Colony, Star
@@ -13,10 +15,17 @@ import server.sbc_parameters as sbc
 from server.sbc_parameters import LOG_LEVEL
 from server.research import upgrade_tech
 from server import data
-from server.newturn import NewTurn
+# from server.newturn import NewTurn
 
 # logging
 logger = logging.getLogger("sbc")
+
+
+@dataclass
+class TurnData:
+    player: Player
+    orders: Orders
+    report: Report
 
 
 def play_one_turn(game_name: str, tmp_folder: str):
@@ -34,6 +43,7 @@ def play_one_turn(game_name: str, tmp_folder: str):
     logger.info(f"{LOG_LEVEL(1)}-- Game engine running for a new turn --")
     # new turn
     GameData().turn += 1
+    turn_data = []  # key is a player, data is TurnData
 
     # retrieving orders
     start = time()
@@ -46,7 +56,7 @@ def play_one_turn(game_name: str, tmp_folder: str):
     for file in orders_files:
         orders = Orders(dirpath + "/" + file)
         player = Player(orders.player_name)
-        new_turns.append(NewTurn(player, orders))
+        turn_data.append(TurnData(player, orders, Report(player)))
         # archive orders files
         os.rename(f"{dirpath}/{file}", f"{dirpath}/archive/{file}")
     stop = time()
@@ -56,16 +66,16 @@ def play_one_turn(game_name: str, tmp_folder: str):
     # production phase - all players one after the other
     logger.debug(f"{LOG_LEVEL(2)}Production phase")
     start = time()
-    for new_turn in new_turns:
-        new_turn.production_phase()
+    for donnees in turn_data:
+        production_phase(donnees.player, donnees.orders, donnees.report)
     stop = time()
     logger.debug(f"{LOG_LEVEL(2)}# Timing # Production phase in {(stop - start) * 1000:.1f} ms")
 
     # movement phase - all players one after the other
     start = time()
     logger.debug(f"{LOG_LEVEL(2)}Movement phase")
-    for new_turn in new_turns:
-        new_turn.movement_phase()
+    for donnees in turn_data:
+        movement_phase(donnees.player, donnees.orders, donnees.report)
     stop = time()
     logger.debug(f"{LOG_LEVEL(2)}# Timing # Movement phase in {(stop - start) * 1000:.1f} ms")
 
@@ -88,9 +98,9 @@ def play_one_turn(game_name: str, tmp_folder: str):
     logger.debug(f"{LOG_LEVEL(2)}Reports generation")
     start = time()
     reports = {}
-    for new_turn in new_turns:
-        new_turn.report.generate_status_report()
-        reports[new_turn.player] = new_turn.report
+    for donnees in turn_data:
+        donnees.report.generate_status_report()
+        reports[donnees.player] = donnees.report
     stop = time()
     logger.debug(f"{LOG_LEVEL(2)}# Timing # Reports creation in {(stop - start) * 1000:.1f} ms")
 
